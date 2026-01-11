@@ -1,6 +1,8 @@
 # City Emotional Map - Real-Time Mood Detection System
 
-![Google Gemini Logo](google-gemini-fjwerd7ldxwt4c010vyoh.webp)
+<div align="center">
+  <img src="google-gemini-fjwerd7ldxwt4c010vyoh.webp" alt="Google Gemini Logo" width="200"/>
+</div>
 
 This application creates a real-time emotional map of Indian cities using Google Gemini AI, multiple news APIs, and data visualization.
 
@@ -136,7 +138,7 @@ graph TD
 - Axios (HTTP client)
 
 ### AI & Analytics
-- ![Google Gemini](google-gemini-fjwerd7ldxwt4c010vyoh.webp) Google Gemini AI
+- Google Gemini AI
 - Emotion Analysis Algorithms
 
 ### News APIs
