@@ -1,12 +1,12 @@
 # City Emotional Map - Real-Time Mood Detection System
 
-This application creates a real-time emotional map of Indian cities using Google Gemini AI, news crawling, and data visualization.
+This application creates a real-time emotional map of Indian cities using Google Gemini AI, multiple news APIs, and data visualization.
 
 ## Features
 
 - Interactive map with location search for Indian cities
 - Real-time emotion analysis using Google Gemini
-- News crawling from major Indian news sources
+- News crawling from multiple news APIs (NewsData.io, GNews, MediaStack, Currents, Newscatcher, Bing News, ContextualWeb, Apify, EventRegistry)
 - Data visualization with pie charts and bar graphs
 - Safety index calculation
 - Automatic updates every 6 hours
@@ -25,18 +25,31 @@ This application creates a real-time emotional map of Indian cities using Google
 
 1. Obtain a Google Maps API key from the [Google Cloud Console](https://console.cloud.google.com/)
 2. Obtain a Google Gemini API key
-3. Create a Google Cloud project and enable required APIs
-4. Update the API keys in the following files:
+3. Obtain API keys for news services (optional but recommended):
+   - NewsData.io API key
+   - GNews API key
+   - MediaStack API key
+   - Currents API key
+   - Newscatcher API key
+   - Bing News API key
+   - ContextualWeb API key
+   - Apify API key
+   - EventRegistry API key
+4. Create a Google Cloud project and enable required APIs
+5. Update the API keys in the following files:
    - `index.html` - Replace `YOUR_GOOGLE_MAPS_API_KEY` with your actual key
-   - `main-integration.js` - Replace `YOUR_GEMINI_API_KEY` with your actual key
-   - `google-cloud-integration.js` - Update configuration with your project details
+   - `api-config.js` - Update all API keys in this centralized configuration file
+   - `server.js` - Update news API keys in the NEWS_API_KEYS configuration
+6. Install dependencies: `npm install`
 
 ### Running the Application
 
 1. Save all files to a local directory
-2. Open `index.html` in a web browser
-3. Enter an Indian city name in the search bar
-4. View the emotional analysis results on the map and charts
+2. Install dependencies: `npm install`
+3. Start the server: `node server.js`
+4. Open `index.html` in a web browser (make sure to serve it through a local web server, not directly from file system due to CORS restrictions)
+5. Enter an Indian city name in the search bar
+6. View the emotional analysis results on the map and charts
 
 ## Files Structure
 
@@ -48,6 +61,9 @@ This application creates a real-time emotional map of Indian cities using Google
 - `visualization.js` - Data visualization components
 - `google-cloud-integration.js` - Google Cloud services integration
 - `main-integration.js` - Orchestrates all components
+- `api-config.js` - Centralized API configuration
+- `server.js` - Backend server with news API integrations
+- `package.json` - Project dependencies and configuration
 - `google-powered-by.svg` - Google branding
 
 ## How It Works
@@ -62,8 +78,10 @@ This application creates a real-time emotional map of Indian cities using Google
 ## Technologies Used
 
 - HTML5, CSS3, JavaScript (ES6+)
+- Node.js server with Express.js
 - Google Maps JavaScript API
 - Google Gemini AI
+- Multiple News APIs (NewsData.io, GNews, MediaStack, Currents, Newscatcher, Bing News, ContextualWeb, Apify, EventRegistry)
 - Google Cloud Platform (BigQuery, Cloud Storage)
 - Chart.js for data visualization
 - Responsive design with CSS Grid and Flexbox
