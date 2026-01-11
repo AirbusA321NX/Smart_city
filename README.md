@@ -2,7 +2,7 @@
 
 <div align="center">
   <img src="google-gemini-fjwerd7ldxwt4c010vyoh.webp" alt="Google Gemini Logo" width="200"/>
-  <img src="Google_Cloud_logo.svg.png" alt="Google Cloud Logo" width="200" style="margin-bottom: 20px;"/>
+  <img src="Google_Cloud_logo.svg.png" alt="Google Cloud Logo" width="200" style="margin-bottom: 40px;"/>
 </div>
 
 This application creates a real-time emotional map of Indian cities using Google Gemini AI, multiple news APIs, and data visualization.
