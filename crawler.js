@@ -58,22 +58,24 @@ class IndianNewsCrawler {
     // Crawl a specific news source
     async crawlSource(source, location) {
         try {
-            // Construct the search URL based on the source and location
-            const searchUrl = `${source.url}/search?q=${encodeURIComponent(location)}&hl=en`;
-
-            // Fetch the page content
-            const response = await fetch(searchUrl);
+            // Due to CORS restrictions, we need to use a backend proxy to fetch external content
+            const response = await fetch('/api/crawl-news-source', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    source: source,
+                    location: location
+                })
+            });
 
             if (!response.ok) {
                 console.error(`Failed to fetch from ${source.name}: ${response.status}`);
                 return [];
             }
 
-            const html = await response.text();
-
-            // Parse the HTML to extract articles
-            const articles = this.parseNewsPage(html, source, location);
-
+            const articles = await response.json();
             return articles;
         } catch (error) {
             console.error(`Error crawling ${source.name}:`, error);
@@ -82,165 +84,35 @@ class IndianNewsCrawler {
     }
 
     // Parse news page HTML to extract articles
+    // This function would be implemented on the server-side due to CORS restrictions
+    // Client-side version removed as it cannot process external websites
     parseNewsPage(html, source, location) {
-        // Create a document from the HTML string
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        // Selectors for different news sites may vary
-        // This is a generalized approach
-        const articleElements = [
-            'article',
-            '.story',
-            '.news-item',
-            '.post',
-            '.headline',
-            '[data-testid="article"]'
-        ];
-
-        let articles = [];
-        let found = false;
-
-        // Try different selectors to find articles
-        for (const selector of articleElements) {
-            const elements = doc.querySelectorAll(selector);
-            if (elements.length > 0) {
-                articles = this.extractArticles(elements, source, location);
-                found = true;
-                break;
-            }
-        }
-
-        // If no articles found with specific selectors, try general approach
-        if (!found) {
-            articles = this.extractGenericArticles(doc, source, location);
-        }
-
-        return articles;
+        // This function is now handled server-side
+        return [];
     }
 
     // Extract articles from selected elements
+    // This function would be implemented on the server-side due to CORS restrictions
+    // Client-side version removed as it cannot process external websites
     extractArticles(elements, source, location) {
-        const articles = [];
-
-        elements.forEach(element => {
-            const titleElement = element.querySelector('h1, h2, h3, .title, .headline, [class*="title"], [class*="headline"]') || element;
-            const title = titleElement.textContent?.trim() || '';
-
-            // Skip if title doesn't contain location
-            if (!title.toLowerCase().includes(location.toLowerCase())) {
-                return;
-            }
-
-            const contentElement = element.querySelector('p, .content, .summary, [class*="content"], [class*="summary"]');
-            const content = contentElement?.textContent?.trim() || '';
-
-            const linkElement = element.querySelector('a');
-            let url = source.url;
-            if (linkElement && linkElement.href) {
-                url = linkElement.href;
-            }
-
-            // Try to find publication date
-            const dateElement = element.querySelector('time, .date, .published, [class*="date"], [class*="published"]');
-            let publishedAt = new Date().toISOString();
-            if (dateElement && dateElement.dateTime) {
-                publishedAt = new Date(dateElement.dateTime).toISOString();
-            } else if (dateElement) {
-                // Try to parse date from text
-                const dateText = dateElement.textContent.trim();
-                const parsedDate = this.parseDate(dateText);
-                if (parsedDate) {
-                    publishedAt = parsedDate.toISOString();
-                }
-            }
-
-            if (title) {
-                articles.push({
-                    title,
-                    content,
-                    url,
-                    source: source.name,
-                    publishedAt,
-                    location
-                });
-            }
-        });
-
-        return articles;
+        // This function is now handled server-side
+        return [];
     }
 
     // Generic approach to extract articles
+    // This function would be implemented on the server-side due to CORS restrictions
+    // Client-side version removed as it cannot process external websites
     extractGenericArticles(doc, source, location) {
-        const articles = [];
-
-        // Look for headings that might contain article titles
-        const headingElements = doc.querySelectorAll('h1, h2, h3');
-
-        headingElements.forEach(heading => {
-            const title = heading.textContent.trim();
-
-            // Only include if it relates to the location
-            if (title.toLowerCase().includes(location.toLowerCase())) {
-                // Try to find associated content
-                let content = '';
-                let nextSibling = heading.nextElementSibling;
-
-                // Look for paragraphs following the heading
-                while (nextSibling && articles.length < 10) { // Limit to prevent too many
-                    if (nextSibling.tagName === 'P' || nextSibling.classList.contains('content')) {
-                        content += ' ' + nextSibling.textContent.trim();
-                    }
-
-                    // Look for links
-                    const linkElement = nextSibling.querySelector('a');
-                    let url = source.url;
-                    if (linkElement && linkElement.href) {
-                        url = linkElement.href;
-                    }
-
-                    // Move to next sibling
-                    nextSibling = nextSibling.nextElementSibling;
-
-                    // Break if we have enough content
-                    if (content.length > 200) break;
-                }
-
-                articles.push({
-                    title,
-                    content: content.substring(0, 500), // Limit content length
-                    url,
-                    source: source.name,
-                    publishedAt: new Date().toISOString(),
-                    location
-                });
-            }
-        });
-
-        return articles;
+        // This function is now handled server-side
+        return [];
     }
 
     // Parse date string to Date object
+    // This function would be implemented on the server-side due to CORS restrictions
+    // Client-side version removed as it cannot process external websites
     parseDate(dateString) {
-        // Common formats to try
-        const formats = [
-            /\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/, // MM/DD/YYYY or DD/MM/YYYY
-            /\b(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/, // YYYY-MM-DD
-            /\b(\w+\s+\d{1,2},\s+\d{4})\b/, // Month DD, YYYY
-        ];
-
-        for (const format of formats) {
-            const match = dateString.match(format);
-            if (match) {
-                try {
-                    return new Date(match[0]);
-                } catch (e) {
-                    continue;
-                }
-            }
-        }
-
-        return null;
+        // This function is now handled server-side
+        return new Date();
     }
 
     // Simply return the location as provided by the user

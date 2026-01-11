@@ -7,7 +7,12 @@
     <title>City Emotional Map - Real-Time Mood Detection</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Load Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places"></script>
+    <script>
+        // Load Google Maps API with key from environment/config
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${window.API_CONFIG?.GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY'}&libraries=places&callback=initMapApp`;
+        document.head.appendChild(script);
+    </script>
     <!-- Load Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -99,6 +104,7 @@
         </div>
     </div>
 
+    <script src="api-config.js"></script>
     <script src="app.js"></script>
     <script src="gemini-api.js"></script>
     <script src="crawler.js"></script>

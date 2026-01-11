@@ -42,15 +42,19 @@ class GeminiEmotionAnalyzer {
             });
 
             const data = await response.json();
-            const result = JSON.parse(data.candidates[0].content.parts[0].text);
-            return result;
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) {
+                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                return result;
+            } else {
+                throw new Error('Invalid response format from Gemini API');
+            }
         } catch (error) {
             console.error('Error analyzing text sentiment:', error);
             return this.getDefaultAnalysis();
         }
     }
 
-    // Analyze image for facial emotions (simulated - in real implementation would use Gemini Pro Vision)
+    // Analyze image for facial emotions using Gemini Pro Vision
     async analyzeFacialEmotions(imageData) {
         const prompt = `
         Analyze the facial expressions in this image and identify the predominant emotions.
@@ -78,31 +82,40 @@ class GeminiEmotionAnalyzer {
         `;
 
         try {
-            // In a real implementation, we would send the image data to Gemini Pro Vision
-            // For simulation purposes, we'll return mock data
-            return {
-                emotions: {
-                    calm: 35,
-                    angry: 15,
-                    depressed: 10,
-                    fear: 20,
-                    happy: 25,
-                    surprised: 5,
-                    disgusted: 3,
-                    neutral: 40
+            const response = await fetch(`${this.visionUrl}?key=${this.apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
                 },
-                crowd_behavior: "mostly peaceful",
-                crowd_density: "medium",
-                overall_mood: "calm",
-                confidence: 85
-            };
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            {
+                                inline_data: {
+                                    mime_type: 'image/jpeg', // or appropriate mime type
+                                    data: imageData // Base64 encoded image data
+                                }
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) {
+                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                return result;
+            } else {
+                throw new Error('Invalid response format from Gemini Vision API');
+            }
         } catch (error) {
             console.error('Error analyzing facial emotions:', error);
             return this.getDefaultFaceAnalysis();
         }
     }
 
-    // Analyze audio for stress/stress indicators (simulated)
+    // Analyze audio for stress/stress indicators
     async analyzeAudioStress(audioData) {
         const prompt = `
         Analyze the audio content for stress indicators, anger, fear, or signs of distress.
@@ -120,16 +133,33 @@ class GeminiEmotionAnalyzer {
         `;
 
         try {
-            // In a real implementation, we would process the audio data
-            // For simulation purposes, we'll return mock data
-            return {
-                stress_level: "medium",
-                anger_detected: false,
-                fear_detected: true,
-                distress_signals: false,
-                emotional_intensity: 65,
-                confidence: 78
-            };
+            const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            {
+                                inline_data: {
+                                    mime_type: 'audio/wav', // or appropriate mime type
+                                    data: audioData // Base64 encoded audio data
+                                }
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) {
+                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                return result;
+            } else {
+                throw new Error('Invalid response format from Gemini API');
+            }
         } catch (error) {
             console.error('Error analyzing audio stress:', error);
             return this.getDefaultAudioAnalysis();

@@ -5,10 +5,25 @@ let emotionPieChart;
 let crimeBarChart;
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', function () {
+function initMapApp() {
     initializeMap();
     setupEventListeners();
     loadSampleData();
+}
+
+// Fallback in case the callback doesn't work
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+        console.warn('Google Maps API not loaded via callback, trying fallback initialization');
+        // Retry initialization after a delay
+        setTimeout(() => {
+            if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+                initializeMap();
+                setupEventListeners();
+                loadSampleData();
+            }
+        }, 1000);
+    }
 });
 
 // Initialize Google Map

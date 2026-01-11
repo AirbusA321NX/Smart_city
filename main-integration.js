@@ -66,7 +66,7 @@ class CityEmotionalMapSystem {
     // Initialize all components
     initializeComponents() {
         // Initialize Gemini Analyzer
-        this.geminiAnalyzer = new window.GeminiEmotionAnalyzer('YOUR_GEMINI_API_KEY');
+        this.geminiAnalyzer = new window.GeminiEmotionAnalyzer(window.API_CONFIG?.GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY');
 
         // Initialize News Crawler
         this.newsCrawler = new window.IndianNewsCrawler();
