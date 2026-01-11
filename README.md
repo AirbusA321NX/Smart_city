@@ -1,5 +1,7 @@
 # City Emotional Map - Real-Time Mood Detection System
 
+![Google Gemini Logo](google-gemini-fjwerd7ldxwt4c010vyoh.webp)
+
 This application creates a real-time emotional map of Indian cities using Google Gemini AI, multiple news APIs, and data visualization.
 
 ## Features
@@ -68,22 +70,86 @@ This application creates a real-time emotional map of Indian cities using Google
 
 ## How It Works
 
+```mermaid
+flowchart LR
+    A[User enters location in search bar] --> B{Request sent to server}
+    B --> C[Crawl multiple news APIs for location-specific content]
+    C --> D{Aggregate news articles}
+    D --> E[Send content to Google Gemini for emotion analysis]
+    E --> F{Analyze emotional sentiment and safety index}
+    F --> G[Process facial expressions from images]
+    G --> H[Process audio stress indicators]
+    H --> I[Aggregate all emotional data]
+    I --> J{Generate comprehensive emotional profile}
+    J --> K[Display results on map & charts]
+    J --> L[Store data in Google Cloud]
+    K --> M[Update every 6 hours automatically]
+    L --> M
+```
+
 1. User enters a location in the search bar
-2. The system crawls Indian news sources for location-specific content
+2. The system crawls multiple news APIs for location-specific content
 3. Google Gemini analyzes the content for emotional sentiment
-4. Results are displayed on the map and in data visualization charts
-5. Data is stored in Google Cloud for historical analysis
-6. The system updates automatically every 6 hours
+4. Facial expressions and audio are processed for additional emotion detection
+5. Results are displayed on the map and in data visualization charts
+6. Data is stored in Google Cloud for historical analysis
+7. The system updates automatically every 6 hours
 
-## Technologies Used
+## System Architecture
 
-- HTML5, CSS3, JavaScript (ES6+)
-- Node.js server with Express.js
+```mermaid
+graph TD
+    A[User Interface - HTML/CSS/JS] --> B[Google Maps API]
+    A --> C[Gemini API]
+    A --> D[News APIs]
+    D --> E[NewsData.io, GNews, MediaStack, Currents, Newscatcher, Bing News, ContextualWeb, Apify, EventRegistry]
+    C --> F[Gemini AI Processing]
+    D --> G[News Content Analysis]
+    F --> H[Emotion Analysis]
+    G --> H
+    H --> I[Data Aggregation]
+    I --> J[Visualization - Chart.js]
+    I --> K[Google Cloud - BigQuery/Storage]
+    B --> A
+    J --> A
+    K --> A
+```
+
+## Technology Stack
+
+### Frontend
+- HTML5
+- CSS3
+- JavaScript (ES6+)
 - Google Maps JavaScript API
-- Google Gemini AI
-- Multiple News APIs (NewsData.io, GNews, MediaStack, Currents, Newscatcher, Bing News, ContextualWeb, Apify, EventRegistry)
-- Google Cloud Platform (BigQuery, Cloud Storage)
-- Chart.js for data visualization
+- Chart.js
+
+### Backend
+- Node.js
+- Express.js
+- Axios (HTTP client)
+
+### AI & Analytics
+- ![Google Gemini](google-gemini-fjwerd7ldxwt4c010vyoh.webp) Google Gemini AI
+- Emotion Analysis Algorithms
+
+### News APIs
+- NewsData.io API
+- GNews API
+- MediaStack API
+- Currents API
+- Newscatcher API
+- Bing News API
+- ContextualWeb API
+- Apify API
+- EventRegistry API
+
+### Cloud Services
+- Google Cloud Platform
+- BigQuery
+- Cloud Storage
+
+### Other Technologies
 - Responsive design with CSS Grid and Flexbox
 
 ## Privacy and Ethics
