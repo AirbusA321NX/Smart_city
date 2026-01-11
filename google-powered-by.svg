@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 8" width="120" height="40">
+  <style>
+    .logo { font-family: Arial, sans-serif; font-size: 6px; font-weight: bold; }
+    .g { fill: #4285F4; }
+    .o1 { fill: #EA4335; }
+    .o2 { fill: #FBBC05; }
+    .g1 { fill: #4285F4; }
+    .l { fill: #34A853; }
+    .e { fill: #EA4335; }
+  </style>
+  <text class="logo" x="0" y="6">
+    <tspan class="g">G</tspan>
+    <tspan class="o1">o</tspan>
+    <tspan class="o2">o</tspan>
+    <tspan class="g1">g</tspan>
+    <tspan class="l">l</tspan>
+    <tspan class="e">e</tspan>
+  </text>
+</svg>
