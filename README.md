@@ -117,16 +117,22 @@ graph TD
 
 ## Technology Stack
 
+### Programming Languages
+- ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black) JavaScript (ES6+)
+- ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white) Node.js
+- ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white) HTML5
+- ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white) CSS3
+
 ### Frontend
-- HTML5
-- CSS3
-- JavaScript (ES6+)
+- ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white) HTML5
+- ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white) CSS3
+- ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black) JavaScript (ES6+)
 - Google Maps JavaScript API
 - Chart.js
 
 ### Backend
-- Node.js
-- Express.js
+- ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white) Node.js
+- ![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge&logo=express&logoColor=white) Express.js
 - Axios (HTTP client)
 
 ### AI & Analytics
@@ -145,7 +151,7 @@ graph TD
 - EventRegistry API
 
 ### Cloud Services
-- Google Cloud Platform
+- ![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white) Google Cloud Platform
 - BigQuery
 - Cloud Storage
 
