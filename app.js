@@ -30,6 +30,72 @@ function initializeMap() {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 18
     }).addTo(map);
+
+    // Load and display Indian state boundaries
+    loadIndiaMapBoundaries();
+}
+
+// Function to load and display India map boundaries
+async function loadIndiaMapBoundaries() {
+    try {
+        // Get all available state boundaries
+        const states = [
+            'andhra-pradesh', 'arunachalpradesh', 'assam', 'bihar', 'chhattisgarh',
+            'goa', 'gujarat-divisions', 'haryana', 'himachal-pradesh', 'jharkhand',
+            'karnataka', 'kerala', 'madhya-pradesh', 'maharashtra', 'manipur',
+            'meghalaya', 'mizoram', 'nagaland', 'odisha', 'punjab',
+            'rajasthan', 'sikkim', 'tamilnadu', 'telangana', 'tripura',
+            'uttar-pradesh', 'uttarakhand', 'west-bengal', 'chandigarh', 'delhi',
+            'puducherry', 'lakshadweep', 'andamannicobarislands', 'dnh',
+            'jammu-kashmir', 'ladakh'
+        ];
+
+        // Load each state's boundary and add to map
+        for (const state of states) {
+            try {
+                const response = await fetch('/api/get-boundaries', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        location: state.replace('-', ' ')
+                    })
+                });
+
+                if (response.ok) {
+                    const boundaryData = await response.json();
+
+                    if (boundaryData.coordinates && boundaryData.coordinates.length > 0) {
+                        // Create a polygon for the state
+                        const statePolygon = L.polygon(
+                            boundaryData.coordinates.map(coord => [coord.lat, coord.lng]),
+                            {
+                                color: '#3388ff',
+                                weight: 1,
+                                fillColor: '#3388ff',
+                                fillOpacity: 0.1
+                            }
+                        );
+
+                        // Add to map
+                        statePolygon.addTo(map);
+
+                        // Add click event to focus on state
+                        statePolygon.on('click', function (e) {
+                            const stateName = state.replace('-', ' ');
+                            document.getElementById('location-search').value = stateName;
+                            handleSearch();
+                        });
+                    }
+                }
+            } catch (error) {
+                console.warn(`Could not load boundary for state: ${state}`, error);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading India map boundaries:', error);
+    }
 }
 
 // Set up search functionality
@@ -659,7 +725,7 @@ async function createStateHeatmap(location, emotionalData) {
     if (!map) return;
 
     // Get state boundaries based on location
-    const stateBoundaries = getStateBoundaries(location);
+    const stateBoundaries = await getStateBoundaries(location);
 
     if (!stateBoundaries || !emotionalData.stateLevelData) return;
 
@@ -710,7 +776,7 @@ async function addStateOverviewPolygon(location, emotionalData) {
     }
 
     // Get state boundaries
-    const stateBoundaries = getStateBoundaries(location);
+    const stateBoundaries = await getStateBoundaries(location);
     if (!stateBoundaries) return;
 
     // Calculate color based on overall crime/safety level
@@ -797,12 +863,7 @@ async function getActualStateCoordinates(location) {
 
         // Fallback to simplified coordinates if API fails
         const stateCoordsMap = {
-            'chandigarh': [
-                { lat: 30.7334, lng: 76.7791 },
-                { lat: 30.7334, lng: 76.8234 },
-                { lat: 30.6842, lng: 76.8234 },
-                { lat: 30.6842, lng: 76.7791 }
-            ],
+
             // Add more states as needed
         };
 
@@ -837,7 +898,7 @@ function showStateOverviewDetails(location, emotionalData) {
             padding: 30px;
             border-radius: 15px;
             width: 80%;
-            max-width: 700px;
+            max-width: 900px;
             max-height: 80vh;
             overflow-y: auto;
             position: relative;
@@ -865,31 +926,46 @@ function showStateOverviewDetails(location, emotionalData) {
     const content = document.querySelector('#state-overview-modal > div:nth-child(1)');
 
     // Format crime stats for display
-    let crimeStatsHTML = '<h4>Crime Statistics:</h4><ul>';
-    if (emotionalData.crimeStats) {
+    let crimeStatsHTML = '<h4>Crime Statistics:</h4><div class="crime-stats-grid">';
+    if (emotionalData.crimeStats && Object.keys(emotionalData.crimeStats).length > 0) {
         for (const [type, count] of Object.entries(emotionalData.crimeStats)) {
-            crimeStatsHTML += `<li>${type}: ${count}</li>`;
+            crimeStatsHTML += `<div class="crime-stat"><span class="crime-type">${type}:</span> <span class="crime-count">${count}</span></div>`;
         }
     } else {
-        crimeStatsHTML += '<li>No crime data available</li>';
+        crimeStatsHTML += '<div class="crime-stat">No crime data available</div>';
     }
-    crimeStatsHTML += '</ul>';
+    crimeStatsHTML += '</div>';
 
     content.innerHTML = `
         <h2>State Overview: ${location}</h2>
-        <div><strong>Safety Index:</strong> ${emotionalData.safetyIndex || 'N/A'}</div>
-        <div><strong>Overall Crime Level:</strong> ${calculateOverallCrimeLevel(emotionalData).toFixed(2)}%</div>
-        <div><strong>Emotional Distribution:</strong></div>
-        <ul>
-            <li>Calm: ${emotionalData.emotions?.calm || 0}%</li>
-            <li>Angry: ${emotionalData.emotions?.angry || 0}%</li>
-            <li>Depressed: ${emotionalData.emotions?.depressed || 0}%</li>
-            <li>Fear: ${emotionalData.emotions?.fear || 0}%</li>
-            <li>Happy: ${emotionalData.emotions?.happy || 0}%</li>
-        </ul>
+        <div class="overview-stats">
+            <div><strong>Safety Index:</strong> <span class="safety-value">${emotionalData.safetyIndex || 'N/A'}</span></div>
+            <div><strong>Overall Crime Level:</strong> <span class="crime-value">${calculateOverallCrimeLevel(emotionalData).toFixed(2)}%</span></div>
+        </div>
+        
+        <div class="emotional-distribution">
+            <h4>Emotional Distribution:</h4>
+            <div class="emotion-grid">
+                <div class="emotion-item"><span class="emotion-label">Calm:</span> <span class="emotion-value">${emotionalData.emotions?.calm || 0}%</span></div>
+                <div class="emotion-item"><span class="emotion-label">Angry:</span> <span class="emotion-value">${emotionalData.emotions?.angry || 0}%</span></div>
+                <div class="emotion-item"><span class="emotion-label">Depressed:</span> <span class="emotion-value">${emotionalData.emotions?.depressed || 0}%</span></div>
+                <div class="emotion-item"><span class="emotion-label">Fear:</span> <span class="emotion-value">${emotionalData.emotions?.fear || 0}%</span></div>
+                <div class="emotion-item"><span class="emotion-label">Happy:</span> <span class="emotion-value">${emotionalData.emotions?.happy || 0}%</span></div>
+            </div>
+        </div>
+        
         ${crimeStatsHTML}
-        <div><strong>Time-based Crime Distribution:</strong></div>
-        <div id="time-chart-container" style="height: 200px; margin-top: 15px;"></div>
+        
+        <div class="time-crime-section">
+            <h4>Time-based Crime Distribution:</h4>
+            <div id="time-chart-container" style="height: 250px; margin-top: 15px;"></div>
+        </div>
+        
+        <div class="state-heatmap-section">
+            <h4>State Crime Heatmap Overview:</h4>
+            <p>This shows a color-coded representation of crime density across different districts in the state. Red indicates high crime density, while green indicates low crime density.</p>
+            <div id="state-heatmap-container" style="height: 300px; margin-top: 15px; border: 1px solid #555; border-radius: 5px; background-color: #1a2530;"></div>
+        </div>
     `;
 
     // Create time-based chart if data exists
@@ -898,6 +974,11 @@ function showStateOverviewDetails(location, emotionalData) {
             createTimeBasedChart('time-chart-container', emotionalData.timeBasedCrimes);
         }, 100);
     }
+
+    // Create state heatmap overview
+    setTimeout(async () => {
+        await createStateHeatmapOverview('state-heatmap-container', location, emotionalData);
+    }, 150);
 
     modal.style.display = 'flex';
 }
@@ -950,20 +1031,131 @@ function createTimeBasedChart(containerId, timeData) {
     });
 }
 
-// Helper function to get state boundaries
-function getStateBoundaries(location) {
-    // This would typically fetch from a service or use a predefined dataset
-    // For now, we'll use a simplified approach
-    const stateMap = {
-        'chandigarh': {
-            bounds: { north: 30.8, south: 30.6, east: 76.9, west: 76.7 },
-            districts: ['chandigarh']
-        },
-        // Add more states as needed
-    };
+// Create state heatmap overview visualization
+async function createStateHeatmapOverview(containerId, location, emotionalData) {
+    // Get state boundaries
+    const stateBoundaries = await getStateBoundaries(location);
 
-    const stateName = location.toLowerCase().split(',')[1]?.trim() || location.toLowerCase();
-    return stateMap[stateName] || null;
+    if (!stateBoundaries) {
+        // If we can't get boundaries, just show a message
+        const container = document.getElementById(containerId);
+        container.innerHTML = '<p>Unable to load state boundaries for visualization</p>';
+        return;
+    }
+
+    // Create a temporary div for the leaflet map
+    const mapDiv = document.createElement('div');
+    mapDiv.style.width = '100%';
+    mapDiv.style.height = '100%';
+    document.getElementById(containerId).appendChild(mapDiv);
+
+    // Create a mini map for the state overview
+    const stateMap = L.map(mapDiv, {
+        zoomControl: false,
+        dragging: false,
+        touchZoom: false,
+        doubleClickZoom: false,
+        scrollWheelZoom: false,
+        boxZoom: false
+    }).setView([20.5937, 78.9629], 5); // Default to India center
+
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(stateMap);
+
+    // Draw the state boundary with color based on crime level
+    const overallCrimeLevel = calculateOverallCrimeLevel(emotionalData);
+
+    // Determine color based on crime level (red for high crime, green for low crime)
+    const crimeColor = getColorForCrimeLevel(overallCrimeLevel);
+
+    // Draw state boundary
+    const stateCoords = [];
+    if (stateBoundaries.bounds) {
+        const bounds = stateBoundaries.bounds;
+        stateCoords.push([bounds.north, bounds.west]);
+        stateCoords.push([bounds.north, bounds.east]);
+        stateCoords.push([bounds.south, bounds.east]);
+        stateCoords.push([bounds.south, bounds.west]);
+        stateCoords.push([bounds.north, bounds.west]); // Close the polygon
+    }
+
+    if (stateCoords.length > 0) {
+        const statePolygon = L.polygon(stateCoords, {
+            color: crimeColor,
+            weight: 2,
+            fillColor: crimeColor,
+            fillOpacity: 0.5
+        }).addTo(stateMap);
+
+        // Fit bounds to show the state
+        stateMap.fitBounds(statePolygon.getBounds());
+    }
+
+    // Add a label for the crime level
+    const labelDiv = L.divIcon({
+        html: `<div style="background: ${crimeColor}; color: white; padding: 5px; border-radius: 3px; font-weight: bold;">Crime Level: ${Math.round(overallCrimeLevel)}%</div>`,
+        className: '',
+        iconSize: [150, 30]
+    });
+
+    if (stateCoords.length > 0) {
+        const centerLat = (stateBoundaries.bounds.north + stateBoundaries.bounds.south) / 2;
+        const centerLng = (stateBoundaries.bounds.east + stateBoundaries.bounds.west) / 2;
+        L.marker([centerLat, centerLng], { icon: labelDiv }).addTo(stateMap);
+    }
+}
+
+// Helper function to get state boundaries
+async function getStateBoundaries(location) {
+    try {
+        // Call our backend API to get geographic boundaries
+        const response = await fetch('/api/get-boundaries', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                location: location
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const boundaryData = await response.json();
+
+        // If coordinates are available, calculate bounds
+        if (boundaryData.coordinates && boundaryData.coordinates.length > 0) {
+            // Calculate bounds from coordinates
+            let north = -Infinity;
+            let south = Infinity;
+            let east = -Infinity;
+            let west = Infinity;
+
+            boundaryData.coordinates.forEach(coord => {
+                north = Math.max(north, coord.lat);
+                south = Math.min(south, coord.lat);
+                east = Math.max(east, coord.lng);
+                west = Math.min(west, coord.lng);
+            });
+
+            // Return the calculated bounds and an empty districts array
+            return {
+                bounds: { north, south, east, west },
+                districts: [] // We could populate this with actual district data if available
+            };
+        } else {
+            // Return null if no coordinates are available
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching state boundaries:', error);
+        return null; // Return null on error
+    }
 }
 
 // Add to your global variables

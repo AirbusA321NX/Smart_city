@@ -3,6 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const fs = require('fs');
+const path = require('path');
+const topojson = require('topojson-client');
 
 // Configuration for news APIs
 const NEWS_API_KEYS = {
@@ -23,8 +26,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static('.'));
 
-// Mock data for demonstration
 const mockNewsSources = [
     { name: 'Times of India', url: 'https://timesofindia.indiatimes.com', category: 'general' },
     { name: 'The Hindu', url: 'https://www.thehindu.com', category: 'general' },
@@ -45,48 +48,83 @@ app.post('/api/emotional-analysis', async (req, res) => {
     try {
         const { location, latitude, longitude } = req.body;
 
-        // In a real implementation, this would call the Mistral API with news data and use Geoapify for location services
-        // For now, we'll return mock data based on the location
-        const emotionalData = {
-            location: location,
-            safetyIndex: Math.floor(Math.random() * 40) + 60, // Random value between 60-100
-            aggregatedEmotions: {
-                calm: Math.floor(Math.random() * 30) + 20,    // 20-50%
-                angry: Math.floor(Math.random() * 20) + 5,    // 5-25%
-                depressed: Math.floor(Math.random() * 15) + 5, // 5-20%
-                fear: Math.floor(Math.random() * 20) + 5,     // 5-25%
-                happy: Math.floor(Math.random() * 25) + 15    // 15-40%
-            },
-            crimeStats: {
-                theft: Math.floor(Math.random() * 10),
-                assault: Math.floor(Math.random() * 5),
-                harassment: Math.floor(Math.random() * 7),
-                robbery: Math.floor(Math.random() * 3)
-            },
-            news: [
+        // Call Mistral AI API for emotional analysis
+        const mistralApiKey = process.env.MISTRAL_API_KEY || 'YOUR_MISTRAL_API_KEY';
+
+        // Get news data for the location
+        const newsResponse = await axios.get(`https://gnews.io/api/v4/search?q=${encodeURIComponent(location)}&token=${NEWS_API_KEYS.gnews}&lang=en&country=in`);
+        const newsArticles = newsResponse.data?.articles || [];
+
+        // Prepare content for Mistral API
+        const newsContent = newsArticles.slice(0, 5).map(article =>
+            `Title: ${article.title}\nDescription: ${article.description || ''}`
+        ).join('\n\n');
+
+        // Call Mistral API for sentiment/emotion analysis
+        const mistralResponse = await axios.post('https://api.mistral.ai/v1/chat/completions', {
+            model: 'mistral-large-latest',
+            messages: [
                 {
-                    title: `Local residents report feeling ${['calm', 'concerned', 'happy'][Math.floor(Math.random() * 3)]} about ${location}`,
-                    content: `Community meeting held in ${location} to discuss local safety measures and community initiatives.`,
-                    emotion: ['calm', 'happy', 'fear'][Math.floor(Math.random() * 3)],
-                    sentiment: ['positive', 'neutral', 'negative'][Math.floor(Math.random() * 3)]
+                    role: 'system',
+                    content: 'You are an expert at analyzing news articles to determine emotional sentiment and safety metrics for locations in India. Analyze the provided news articles and return a JSON response with the following structure: {safetyIndex: number (0-100), aggregatedEmotions: {calm: number, angry: number, depressed: number, fear: number, happy: number}, crimeStats: {theft?: number, assault?: number, harassment?: number, robbery?: number, other?: number}, news: Array of objects with title, content, emotion, sentiment, and location properties}'
                 },
                 {
-                    title: `Weather conditions in ${location} affecting mood of citizens`,
-                    content: `Unseasonable weather patterns in ${location} have led to increased discussions about mental health support.`,
-                    emotion: ['depressed', 'calm', 'happy'][Math.floor(Math.random() * 3)],
-                    sentiment: ['negative', 'positive', 'neutral'][Math.floor(Math.random() * 3)]
+                    role: 'user',
+                    content: `Analyze the following news articles for ${location} and provide emotional and safety insights:\n\n${newsContent}`
                 }
             ],
-            timeBasedCrimes: Array(24).fill(0).map(() => Math.floor(Math.random() * 10)),
-            historicalData: {
-                dates: ['7 days ago', '6 days ago', '5 days ago', '4 days ago', '3 days ago', '2 days ago', 'Yesterday'],
-                safetyTrend: Array(7).fill(0).map(() => Math.floor(Math.random() * 40) + 60)
+            temperature: 0.3
+        }, {
+            headers: {
+                'Authorization': `Bearer ${mistralApiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const aiAnalysis = mistralResponse.data.choices[0].message.content;
+
+        // Attempt to extract JSON from AI response (assuming it returns structured data)
+        let parsedData = {};
+        try {
+            // Look for JSON within the response, potentially surrounded by markdown
+            const jsonMatch = aiAnalysis.match(/```(?:json)?\n([\s\S]*?)\n```|({[\s\S]*?})/);
+            if (jsonMatch) {
+                const jsonData = jsonMatch[1] || jsonMatch[2];
+                parsedData = JSON.parse(jsonData);
+            } else {
+                // If no JSON found, return basic structure
+                parsedData = {};
+            }
+        } catch (e) {
+            console.log('Could not parse AI response as JSON, using defaults');
+            parsedData = {};
+        }
+
+        // Construct emotionalData with fallbacks to avoid any hardcoded values
+        const emotionalData = {
+            location: location,
+            safetyIndex: parsedData.safetyIndex || 0,
+            aggregatedEmotions: parsedData.aggregatedEmotions || {
+                calm: 0,
+                angry: 0,
+                depressed: 0,
+                fear: 0,
+                happy: 0
             },
-            geographicZones: [
-                { position: { lat: latitude + 0.01, lng: longitude + 0.01 }, emotion: 'calm', intensity: 75 },
-                { position: { lat: latitude - 0.01, lng: longitude - 0.01 }, emotion: 'happy', intensity: 60 },
-                { position: { lat: latitude + 0.005, lng: longitude - 0.005 }, emotion: 'fear', intensity: 40 }
-            ]
+            crimeStats: parsedData.crimeStats || {},
+            news: parsedData.news || newsArticles.map(article => ({
+                title: article.title,
+                content: article.description,
+                emotion: 'neutral',
+                sentiment: 'neutral',
+                location: location
+            })),
+            timeBasedCrimes: parsedData.timeBasedCrimes || Array(24).fill(0),
+            historicalData: parsedData.historicalData || {
+                dates: [],
+                safetyTrend: []
+            },
+            geographicZones: parsedData.geographicZones || []
         };
 
         res.json(emotionalData);
@@ -101,22 +139,257 @@ app.post('/api/get-boundaries', async (req, res) => {
     try {
         const { location } = req.body;
 
-        // Return mock boundaries for demonstration
-        const boundaries = {
-            coordinates: [
-                { lat: 20.5737, lng: 78.9429 },
-                { lat: 20.6137, lng: 78.9429 },
-                { lat: 20.6137, lng: 78.9829 },
-                { lat: 20.5737, lng: 78.9829 }
-            ]
+        // Define state name mappings to match the file names
+        const stateNameMap = {
+            'andhra pradesh': 'andhra-pradesh',
+            'arunachal pradesh': 'arunachalpradesh',
+            'assam': 'assam',
+            'bihar': 'bihar',
+            'chhattisgarh': 'chhattisgarh',
+            'goa': 'goa',
+            'gujarat': 'gujarat-divisions',
+            'haryana': 'haryana',
+            'himachal pradesh': 'himachal-pradesh',
+            'jharkhand': 'jharkhand',
+            'karnataka': 'karnataka',
+            'kerala': 'kerala',
+            'madhya pradesh': 'madhya-pradesh',
+            'maharashtra': 'maharashtra',
+            'manipur': 'manipur',
+            'meghalaya': 'meghalaya',
+            'mizoram': 'mizoram',
+            'nagaland': 'nagaland',
+            'odisha': 'odisha',
+            'punjab': 'punjab',
+            'rajasthan': 'rajasthan',
+            'sikkim': 'sikkim',
+            'tamil nadu': 'tamilnadu',
+            'telangana': 'telangana',
+            'tripura': 'tripura',
+            'uttar pradesh': 'uttar-pradesh',
+            'uttarakhand': 'uttarakhand',
+            'west bengal': 'west-bengal',
+            'chandigarh': 'chandigarh',
+            'delhi': 'delhi',
+            'puducherry': 'puducherry',
+            'lakshadweep': 'lakshadweep',
+            'andaman and nicobar islands': 'andamannicobarislands',
+            'dadra and nagar haveli and daman and diu': 'dnh',
+            'jammu and kashmir': 'jammu-kashmir',
+            'ladakh': 'ladakh'
         };
 
-        res.json(boundaries);
+        // Get normalized state name
+        const locationLower = location.toLowerCase();
+        let stateName = '';
+
+        // Try to extract state name from location string
+        for (const [fullStateName, fileName] of Object.entries(stateNameMap)) {
+            if (locationLower.includes(fullStateName)) {
+                stateName = fileName;
+                break;
+            }
+        }
+
+        // If not found in the mapping, try the last part of the location string
+        if (!stateName && locationLower.includes(',')) {
+            const parts = locationLower.split(',');
+            const potentialState = parts[parts.length - 1].trim();
+            if (stateNameMap[potentialState]) {
+                stateName = stateNameMap[potentialState];
+            }
+        }
+
+        if (!stateName) {
+            // If we can't identify the state, return empty boundaries
+            res.json({ coordinates: [] });
+            return;
+        }
+
+        // Try to read the corresponding topojson file
+        // First try the divisions folder
+        let topoJsonPath = path.join(__dirname, 'maps-master', 'maps-master', 'divisions', `${stateName}.topo.json`);
+        let topoJson = null;
+        let objectKey = null;
+
+        // If the divisions file doesn't exist, try other folders
+        if (!fs.existsSync(topoJsonPath)) {
+            // Try the states folder
+            topoJsonPath = path.join(__dirname, 'maps-master', 'maps-master', 'states', `${stateName}.topo.json`);
+
+            if (!fs.existsSync(topoJsonPath)) {
+                // Try the districts folder
+                topoJsonPath = path.join(__dirname, 'maps-master', 'maps-master', 'districts', `${stateName}.topo.json`);
+
+                if (!fs.existsSync(topoJsonPath)) {
+                    // Try without any subfolder
+                    topoJsonPath = path.join(__dirname, 'maps-master', 'maps-master', `${stateName}.topo.json`);
+                }
+            }
+        }
+
+        if (fs.existsSync(topoJsonPath)) {
+            try {
+                const topoJsonData = fs.readFileSync(topoJsonPath, 'utf8');
+                topoJson = JSON.parse(topoJsonData);
+
+                // Determine the correct object key in the topojson
+                objectKey = stateName;
+                if (topoJson.objects && !topoJson.objects[stateName]) {
+                    // If the direct stateName key doesn't exist, try common variations
+                    const possibleKeys = [
+                        `${stateName}-division-district`,  // Like in the assam file
+                        `${stateName}-test`,              // Like in the haryana file
+                        `${stateName}-division`,          // Like in the bihar file
+                        `${stateName}-districts-divisions`,
+                        `${stateName}-divisions-districts`,
+                        `${stateName}-divisions`,
+                        `${stateName}-districts`,
+                        `${stateName}-states`,
+                        // Additional variations for states like himachal-pradesh, madhya-pradesh, etc.
+                        `${stateName.replace('-', '')}`,           // himachalpradesh instead of himachal-pradesh
+                        `${stateName.replace('-', '')}-districts`, // himachalpradesh-districts
+                        `${stateName.replace('-', '')}-divisions`, // himachalpradesh-divisions
+                        `${stateName.replace('-', '')}-division`,  // himachalpradesh-division
+                        `${stateName.replace('-', '')}-test`,      // himachalpradesh-test
+                        // Specific known variations from debug
+                        'hp-division',                           // himachal-pradesh variation
+                        'MadhyaPradesh',                         // madhya-pradesh variation
+                        'Manipur',                               // manipur variation
+                        'Punjab',                                // punjab variation
+                        stateName
+                    ];
+
+                    for (const key of possibleKeys) {
+                        if (topoJson.objects && topoJson.objects[key]) {
+                            objectKey = key;
+                            break;
+                        }
+                    }
+
+                    // If still no match, try with different name formats
+                    if (!objectKey && location) {
+                        const normalizedLocation = location.toLowerCase().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                        const possibleAlternativeKeys = [
+                            normalizedLocation,
+                            `${normalizedLocation}-division-district`,
+                            `${normalizedLocation}-test`,
+                            `${normalizedLocation}-division`,
+                            `${normalizedLocation}-districts-divisions`,
+                            `${normalizedLocation}-divisions-districts`,
+                            `${normalizedLocation}-divisions`,
+                            `${normalizedLocation}-districts`,
+                            `${normalizedLocation}-states`,
+                            // Additional variations for states like himachal-pradesh, madhya-pradesh, etc.
+                            `${normalizedLocation.replace('-', '')}`,           // himachalpradesh instead of himachal-pradesh
+                            `${normalizedLocation.replace('-', '')}-districts`, // himachalpradesh-districts
+                            `${normalizedLocation.replace('-', '')}-divisions`, // himachalpradesh-divisions
+                            `${normalizedLocation.replace('-', '')}-division`,  // himachalpradesh-division
+                            `${normalizedLocation.replace('-', '')}-test`,      // himachalpradesh-test
+                            // Specific known variations from debug
+                            'hp-division',                           // himachal-pradesh variation
+                            'MadhyaPradesh',                         // madhya-pradesh variation
+                            'Manipur',                               // manipur variation
+                            'Punjab'                                 // punjab variation
+                        ];
+
+                        for (const key of possibleAlternativeKeys) {
+                            if (topoJson.objects && topoJson.objects[key]) {
+                                objectKey = key;
+                                break;
+                            }
+                        }
+                    }
+
+                    // If still no match, try with the first available key as fallback
+                    if (!objectKey && topoJson.objects) {
+                        const allKeys = Object.keys(topoJson.objects);
+                        if (allKeys.length > 0) {
+                            objectKey = allKeys[0];
+                        }
+                    }
+                }
+
+                // Convert topojson to geojson to get the geometry
+                if (!topoJson.objects || !topoJson.objects[objectKey]) {
+                    console.warn(`Object key '${objectKey}' not found in topojson file for location: ${location}, returning empty coordinates`);
+                    res.json({ coordinates: [] }); // Return empty coordinates instead of error
+                    return;
+                }
+                const geoJson = topojson.feature(topoJson, topoJson.objects[objectKey]);
+
+                // Extract coordinates from the geometry
+                let coordinates = [];
+
+                if (geoJson.type === 'FeatureCollection') {
+                    // If it's a collection of features, get the coordinates from all geometries
+                    for (const feature of geoJson.features) {
+                        coordinates = coordinates.concat(extractCoordinates(feature.geometry));
+                    }
+                } else {
+                    // If it's a single feature, get coordinates from the geometry
+                    coordinates = extractCoordinates(geoJson.geometry);
+                }
+
+                res.json({ coordinates });
+                return;
+            } catch (parseError) {
+                console.error('Error parsing topojson file:', parseError);
+                // Return mock boundaries if parsing fails
+                res.json({ coordinates: [] });
+                return;
+            }
+        } else {
+            // File doesn't exist, return empty boundaries
+            res.json({ coordinates: [] });
+            return;
+        }
     } catch (error) {
         console.error('Error in get boundaries:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// Helper function to extract coordinates from geometry
+function extractCoordinates(geometry) {
+    const coordinates = [];
+
+    if (geometry.type === 'Polygon') {
+        // For Polygon, the first element contains the outer ring
+        for (const coord of geometry.coordinates[0]) {
+            coordinates.push({ lat: coord[1], lng: coord[0] });
+        }
+    } else if (geometry.type === 'MultiPolygon') {
+        // For MultiPolygon, each element is a polygon
+        for (const polygon of geometry.coordinates) {
+            for (const coord of polygon[0]) {  // Take only the outer ring
+                coordinates.push({ lat: coord[1], lng: coord[0] });
+            }
+        }
+    } else if (geometry.type === 'LineString') {
+        // For LineString
+        for (const coord of geometry.coordinates) {
+            coordinates.push({ lat: coord[1], lng: coord[0] });
+        }
+    } else if (geometry.type === 'MultiLineString') {
+        // For MultiLineString
+        for (const lineString of geometry.coordinates) {
+            for (const coord of lineString) {
+                coordinates.push({ lat: coord[1], lng: coord[0] });
+            }
+        }
+    } else if (geometry.type === 'Point') {
+        // For Point
+        coordinates.push({ lat: geometry.coordinates[1], lng: geometry.coordinates[0] });
+    } else if (geometry.type === 'MultiPoint') {
+        // For MultiPoint
+        for (const coord of geometry.coordinates) {
+            coordinates.push({ lat: coord[1], lng: coord[0] });
+        }
+    }
+
+    return coordinates;
+}
 
 // User feedback endpoint
 app.post('/api/user-feedback', async (req, res) => {
@@ -133,27 +406,7 @@ app.post('/api/user-feedback', async (req, res) => {
     }
 });
 
-// Social media integration endpoints
-app.post('/api/social/:platform', async (req, res) => {
-    try {
-        const { platform } = req.params;
-        const { location } = req.body;
 
-        // Return mock social media data
-        const mockData = {
-            posts: [
-                { text: `Just visited ${location} and feeling great!`, sentiment: 'positive' },
-                { text: `Safety concerns in ${location} need attention`, sentiment: 'negative' },
-                { text: `Beautiful day in ${location}`, sentiment: 'positive' }
-            ]
-        };
-
-        res.json(mockData);
-    } catch (error) {
-        console.error(`Error in ${req.params.platform} integration:`, error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
 
 // Crawl news source endpoint
 app.post('/api/crawl-news-source', async (req, res) => {
@@ -320,26 +573,9 @@ app.post('/api/crawl-news-source', async (req, res) => {
             console.log('EventRegistry API failed:', err.message);
         }
 
-        // If all APIs fail, return mock data
+        // If all APIs fail, return an error
         if (articles.length === 0) {
-            articles = [
-                {
-                    title: `Local residents report positive developments in ${location}`,
-                    content: `Community leaders in ${location} announce new safety measures and infrastructure improvements.`,
-                    url: `${source.url}/article1`,
-                    source: source.name,
-                    publishedAt: new Date().toISOString(),
-                    location: location
-                },
-                {
-                    title: `Economic growth continues in ${location} area`,
-                    content: `New businesses opening in ${location} contribute to positive sentiment among residents.`,
-                    url: `${source.url}/article2`,
-                    source: source.name,
-                    publishedAt: new Date().toISOString(),
-                    location: location
-                }
-            ];
+            return res.status(500).json({ error: 'No news articles could be retrieved for the specified location' });
         }
 
         res.json(articles);
@@ -428,18 +664,10 @@ app.post('/api/get-historical-data', async (req, res) => {
     try {
         const { location, daysBack } = req.body;
 
-        // Return mock historical data
-        const mockData = Array(Math.min(daysBack, 7)).fill(0).map((_, index) => ({
-            timestamp: new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(),
-            safety_index: Math.floor(Math.random() * 40) + 60,
-            calm_percentage: Math.floor(Math.random() * 30) + 20,
-            angry_percentage: Math.floor(Math.random() * 20) + 5,
-            depressed_percentage: Math.floor(Math.random() * 15) + 5,
-            fear_percentage: Math.floor(Math.random() * 20) + 5,
-            happy_percentage: Math.floor(Math.random() * 25) + 15
-        }));
+        // In a real implementation, this would fetch from historical data
+        const historicalData = [];
 
-        res.json(mockData);
+        res.json(historicalData);
     } catch (error) {
         console.error('Error getting historical data:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -450,23 +678,19 @@ app.post('/api/get-location-statistics', async (req, res) => {
     try {
         const { location } = req.body;
 
-        // Return mock statistics
-        const mockStats = {
-            total_analyses: Math.floor(Math.random() * 100) + 50,
-            average_safety: Math.floor(Math.random() * 40) + 60,
-            average_calm: Math.floor(Math.random() * 30) + 20,
-            average_angry: Math.floor(Math.random() * 20) + 5,
-            average_depressed: Math.floor(Math.random() * 15) + 5,
-            average_fear: Math.floor(Math.random() * 20) + 5,
-            average_happy: Math.floor(Math.random() * 25) + 15,
-            last_analysis: new Date().toISOString()
-        };
+        // In a real implementation, this would fetch from location statistics
+        const locationStats = {};
 
-        res.json(mockStats);
+        res.json(locationStats);
     } catch (error) {
         console.error('Error getting location statistics:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+// Serve the main HTML page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Health check endpoint
