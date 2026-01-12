@@ -1316,29 +1316,50 @@ function analyzeEmotionalTrends(historicalData) {
 function identifyPotentialHotspots(emotionalData) {
     const hotspots = [];
 
-    // Example algorithm to identify potential hotspots
-    // Look for areas with high crime rates, high negative emotions, or sudden changes
+    // Identify potential hotspots using real data from emotional analysis
     if (emotionalData.crimeStats) {
         for (const [crimeType, count] of Object.entries(emotionalData.crimeStats)) {
-            if (count > 10) { // Threshold for high crime rate
+            if (count > 0) { // Include all crime types with actual reported incidents
                 hotspots.push({
                     type: 'crime',
                     crimeType,
-                    severity: 'high',
-                    confidence: 85
+                    severity: count > 5 ? 'high' : 'medium', // Scale severity based on count
+                    confidence: Math.min(95, Math.floor(count * 3)) // Confidence based on incident count
                 });
             }
         }
     }
 
-    // Check for high negative emotions
+    // Check for high negative emotions based on actual data
     if (emotionalData.emotions) {
-        if (emotionalData.emotions.angry > 40 || emotionalData.emotions.fear > 35) {
+        const angry = emotionalData.emotions.angry || 0;
+        const fear = emotionalData.emotions.fear || 0;
+        const depressed = emotionalData.emotions.depressed || 0;
+
+        if (angry > 0) {
             hotspots.push({
                 type: 'emotional',
-                emotion: emotionalData.emotions.angry > emotionalData.emotions.fear ? 'angry' : 'fear',
-                severity: 'high',
-                confidence: 75
+                emotion: 'angry',
+                severity: angry > 25 ? 'high' : (angry > 10 ? 'medium' : 'low'),
+                confidence: Math.min(90, Math.floor(angry * 2))
+            });
+        }
+
+        if (fear > 0) {
+            hotspots.push({
+                type: 'emotional',
+                emotion: 'fear',
+                severity: fear > 25 ? 'high' : (fear > 10 ? 'medium' : 'low'),
+                confidence: Math.min(90, Math.floor(fear * 2))
+            });
+        }
+
+        if (depressed > 0) {
+            hotspots.push({
+                type: 'emotional',
+                emotion: 'depressed',
+                severity: depressed > 25 ? 'high' : (depressed > 10 ? 'medium' : 'low'),
+                confidence: Math.min(90, Math.floor(depressed * 2))
             });
         }
     }
