@@ -55,7 +55,7 @@ class CityEmotionalMapSystem {
                 checkComponent('MistralEmotionAnalyzer'),
                 checkComponent('IndianNewsCrawler'),
                 checkComponent('EmotionalMapVisualizer'),
-                checkComponent('GoogleCloudIntegration')
+                checkComponent('DataIntegration')
             ]);
         } catch (error) {
             console.error('Error waiting for components:', error);
@@ -65,7 +65,7 @@ class CityEmotionalMapSystem {
 
     // Initialize all components
     initializeComponents() {
-        // Initialize Gemini Analyzer
+        // Initialize Mistral Analyzer
         this.mistralAnalyzer = new window.MistralEmotionAnalyzer(window.API_CONFIG?.MISTRAL_API_KEY || 'YOUR_MISTRAL_API_KEY');
 
         // Initialize News Crawler
@@ -74,8 +74,8 @@ class CityEmotionalMapSystem {
         // Get reference to visualizer
         this.visualizer = window.emotionalMapVisualizer;
 
-        // Get reference to cloud integration
-        this.cloudIntegration = window.cloudIntegration;
+        // Get reference to data integration
+        this.cloudIntegration = window.dataIntegration;
 
         // Start periodic crawling
         this.newsCrawler.schedulePeriodicCrawling();
@@ -131,7 +131,7 @@ class CityEmotionalMapSystem {
             // Update the visualization
             this.visualizer.updateChartData(emotionalAnalysis);
 
-            // Store results in Google Cloud
+            // Store results in data storage
             await this.storeResults(location, emotionalAnalysis, newsData);
 
             // Update current location
@@ -149,7 +149,7 @@ class CityEmotionalMapSystem {
         }
     }
 
-    // Store results in Google Cloud
+    // Store results in data storage
     async storeResults(location, emotionalAnalysis, newsData) {
         try {
             // Store emotional analysis
@@ -158,9 +158,9 @@ class CityEmotionalMapSystem {
             // Store raw news data
             await this.cloudIntegration.storeRawNewsData(newsData);
 
-            console.log('Results stored in Google Cloud successfully');
+            console.log('Results stored successfully');
         } catch (error) {
-            console.error('Error storing results in Google Cloud:', error);
+            console.error('Error storing results:', error);
             // Don't throw error here as it shouldn't stop the UI flow
         }
     }

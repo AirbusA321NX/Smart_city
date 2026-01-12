@@ -7,50 +7,40 @@ let crimeBarChart;
 // Initialize the application
 function initMapApp() {
     initializeMap();
+    setupSearchFunctionality();
     setupEventListeners();
     loadSampleData();
 }
 
-// Fallback in case the callback doesn't work
+// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function () {
-    if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
-        console.warn('Google Maps API not loaded via callback, trying fallback initialization');
-        // Retry initialization after a delay
-        setTimeout(() => {
-            if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
-                initializeMap();
-                setupEventListeners();
-                loadSampleData();
-            }
-        }, 1000);
-    }
+    initializeMap();
+    setupSearchFunctionality();
+    setupEventListeners();
+    loadSampleData();
 });
 
-// Initialize Google Map
+// Initialize Leaflet Map
 function initializeMap() {
-    const mapOptions = {
-        center: { lat: 20.5937, lng: 78.9629 }, // Center of India
-        zoom: 5,
-        styles: [
-            {
-                featureType: "administrative",
-                elementType: "labels.text.fill",
-                stylers: [{ color: "#ffffff" }]
-            },
-            {
-                featureType: "water",
-                elementType: "geometry",
-                stylers: [{ color: "#17263c" }]
-            },
-            {
-                featureType: "landscape",
-                elementType: "geometry",
-                stylers: [{ color: "#2c3e50" }]
-            }
-        ]
-    };
+    // Create map centered on India
+    map = L.map('map').setView([20.5937, 78.9629], 5); // Center of India
 
-    map = new google.maps.Map(document.getElementById('map'), mapOptions);
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(map);
+}
+
+// Set up search functionality
+function setupSearchFunctionality() {
+    const searchInput = document.getElementById('location-search');
+
+    // Add search input event
+    searchInput.addEventListener('input', handleSearchInput);
+
+    // Add search button click event
+    searchInput.addEventListener('keypress', handleKeyDown);
 }
 
 // Set up event listeners
@@ -58,10 +48,6 @@ function setupEventListeners() {
     const searchInput = document.getElementById('location-search');
     const searchButton = document.getElementById('search-btn');
     const dropdown = document.getElementById('location-dropdown');
-
-    // Search input events
-    searchInput.addEventListener('input', handleSearchInput);
-    searchInput.addEventListener('keydown', handleKeyDown);
 
     // Search button click
     searchButton.addEventListener('click', handleSearch);
@@ -80,27 +66,27 @@ function handleSearchInput(event) {
     const dropdown = document.getElementById('location-dropdown');
 
     if (query.length > 2) {
-        // Use Google Places Autocomplete service for suggestions
-        const service = new google.maps.places.AutocompleteService();
-
-        service.getPlacePredictions({
-            input: query,
-            componentRestrictions: { country: 'in' }, // Restrict to India
-            types: ['(regions)'] // Include regions, cities, and sub-localities
-        }, (predictions, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-                const suggestions = predictions.map(prediction => {
-                    return {
-                        name: prediction.description,
-                        placeId: prediction.place_id
-                    };
-                });
-
-                showSuggestions(suggestions);
-            } else {
+        // Use Geoapify Autocomplete API for suggestions
+        fetch(`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=in&apiKey=${window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY'}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.results) {
+                    const suggestions = data.results.map(result => {
+                        return {
+                            name: result.formatted,
+                            lat: result.lat,
+                            lon: result.lon
+                        };
+                    });
+                    showSuggestions(suggestions);
+                } else {
+                    dropdown.classList.add('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching Geoapify suggestions:', error);
                 dropdown.classList.add('hidden');
-            }
-        });
+            });
     } else {
         dropdown.classList.add('hidden');
     }
@@ -129,8 +115,8 @@ function showSuggestions(suggestions) {
                 div.addEventListener('click', () => {
                     document.getElementById('location-search').value = suggestion.name;
                     dropdown.classList.add('hidden');
-                    // Use the place ID for more accurate geocoding
-                    geocodeLocationByPlaceId(suggestion.placeId, suggestion.name);
+                    // Use the coordinates for geocoding
+                    geocodeLocationByCoordinates(suggestion.lat, suggestion.lon, suggestion.name);
                 });
             }
 
@@ -162,61 +148,51 @@ function handleSearch() {
 
 // Geocode location and update map
 function geocodeLocation(location) {
-    const geocoder = new google.maps.Geocoder();
+    // Use Geoapify Forward Geocoding API
+    fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(location)}&format=json&apiKey=${window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY'}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.results && data.results.length > 0) {
+                const result = data.results[0];
+                const lat = result.lat;
+                const lon = result.lon;
 
-    geocoder.geocode({ address: location }, function (results, status) {
-        if (status === 'OK') {
-            const lat = results[0].geometry.location.lat();
-            const lng = results[0].geometry.location.lng();
+                // Store current location for heatmap
+                window.currentLocation = location;
 
-            // Store current location for heatmap
-            window.currentLocation = location;
+                // Center map on location
+                map.setView([lat, lon], 12);
 
-            // Center map on location
-            map.setCenter({ lat, lng });
-            map.setZoom(12);
+                // Add marker
+                addMarker(lat, lon, location);
 
-            // Add marker
-            addMarker(lat, lng, location);
-
-            // Fetch data for location
-            fetchDataForLocation(location, lat, lng);
-        } else {
-            alert('Location not found: ' + status);
+                // Fetch data for location
+                fetchDataForLocation(location, lat, lon);
+            } else {
+                alert('Location not found');
+                showLoading(false);
+            }
+        })
+        .catch(error => {
+            console.error('Error geocoding location:', error);
+            alert('Error geocoding location');
             showLoading(false);
-        }
-    });
+        });
 }
 
-// Geocode location using Place ID for more accurate results
-function geocodeLocationByPlaceId(placeId, locationName) {
-    const service = new google.maps.places.PlacesService(map);
+// Geocode location using coordinates
+function geocodeLocationByCoordinates(lat, lon, locationName) {
+    // Store current location for heatmap
+    window.currentLocation = locationName;
 
-    service.getDetails({
-        placeId: placeId,
-        fields: ['geometry', 'name', 'formatted_address']
-    }, (place, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-            const lat = place.geometry.location.lat();
-            const lng = place.geometry.location.lng();
+    // Center map on location
+    map.setView([lat, lon], 12);
 
-            // Store current location for heatmap
-            window.currentLocation = locationName;
+    // Add marker
+    addMarker(lat, lon, locationName);
 
-            // Center map on location
-            map.setCenter({ lat, lng });
-            map.setZoom(12);
-
-            // Add marker
-            addMarker(lat, lng, place.name || locationName);
-
-            // Fetch data for location
-            fetchDataForLocation(locationName, lat, lng);
-        } else {
-            // Fallback to regular geocoding if place details fail
-            geocodeLocation(locationName);
-        }
-    });
+    // Fetch data for location
+    fetchDataForLocation(locationName, lat, lon);
 }
 
 // Add marker to map
@@ -224,28 +200,25 @@ function addMarker(lat, lng, title) {
     // Clear existing markers
     clearMarkers();
 
-    const marker = new google.maps.Marker({
-        position: { lat, lng },
-        map: map,
-        title: title,
-        animation: google.maps.Animation.DROP
-    });
+    // Create Leaflet marker
+    const marker = L.marker([lat, lng]).addTo(map);
 
     markers.push(marker);
 
-    // Add info window
-    const infoWindow = new google.maps.InfoWindow({
-        content: `<div><strong>${title}</strong><br>Emotional Analysis Zone</div>`
-    });
+    // Add popup to marker
+    marker.bindPopup(`<div><strong>${title}</strong><br>Emotional Analysis Zone</div>`);
 
-    marker.addListener('click', function () {
-        infoWindow.open(map, marker);
+    // Open popup when marker is clicked
+    marker.on('click', function () {
+        marker.openPopup();
     });
 }
 
 // Clear all markers
 function clearMarkers() {
-    markers.forEach(marker => marker.setMap(null));
+    markers.forEach(marker => {
+        map.removeLayer(marker);
+    });
     markers = [];
 }
 
@@ -697,40 +670,33 @@ async function createStateHeatmap(location, emotionalData) {
     for (const district of emotionalData.stateLevelData.districts) {
         // Convert district coordinates to heatmap format
         if (district.coordinates && district.emotionIntensity) {
-            heatmapData.push({
-                location: new google.maps.LatLng(district.coordinates.lat, district.coordinates.lng),
-                weight: district.emotionIntensity
-            });
+            heatmapData.push([
+                district.coordinates.lat,
+                district.coordinates.lng,
+                district.emotionIntensity
+            ]);
         }
     }
 
     // Create or update heatmap layer
     if (window.stateHeatmapLayer) {
-        window.stateHeatmapLayer.setMap(null);
+        // Remove existing heatmap layer if it exists
+        map.removeLayer(window.stateHeatmapLayer);
     }
 
-    window.stateHeatmapLayer = new google.maps.visualization.HeatmapLayer({
-        data: heatmapData,
-        map: map,
-        dissipating: true,
-        maxIntensity: 100,
-        opacity: 0.6,
-        radius: 20000, // Adjust based on state size
-        gradient: [
-            'rgba(0, 255, 255, 0)',
-            'rgba(0, 255, 255, 1)',
-            'rgba(0, 191, 255, 1)',
-            'rgba(0, 0, 255, 1)',
-            'rgba(0, 0, 127, 1)',
-            'rgba(127, 0, 255, 1)',
-            'rgba(255, 0, 255, 1)',
-            'rgba(255, 0, 127, 1)',
-            'rgba(255, 0, 0, 1)',
-            'rgba(255, 127, 0, 1)',
-            'rgba(255, 255, 0, 1)',
-            'rgba(255, 255, 127, 1)'
-        ]
-    });
+    // Create Leaflet heatmap layer using leaflet-heat plugin
+    window.stateHeatmapLayer = L.heatLayer(heatmapData, {
+        radius: 20,
+        blur: 15,
+        max: 100,
+        gradient: {
+            0.2: 'blue',
+            0.4: 'lime',
+            0.6: 'yellow',
+            0.8: 'orange',
+            1.0: 'red'
+        }
+    }).addTo(map);
 
     // Add state overview polygon with color based on crime levels
     await addStateOverviewPolygon(location, emotionalData);
@@ -740,7 +706,7 @@ async function createStateHeatmap(location, emotionalData) {
 async function addStateOverviewPolygon(location, emotionalData) {
     // Clear existing state polygons
     if (window.statePolygon) {
-        window.statePolygon.setMap(null);
+        map.removeLayer(window.statePolygon);
     }
 
     // Get state boundaries
@@ -755,19 +721,16 @@ async function addStateOverviewPolygon(location, emotionalData) {
     const stateCoords = await getActualStateCoordinates(location);
 
     if (stateCoords) {
-        window.statePolygon = new google.maps.Polygon({
-            paths: stateCoords,
-            strokeColor: '#FF0000',
-            strokeOpacity: 0.8,
-            strokeWeight: 2,
+        window.statePolygon = L.polygon(stateCoords, {
+            color: '#FF0000',
+            opacity: 0.8,
+            weight: 2,
             fillColor: fillColor,
             fillOpacity: 0.35
-        });
-
-        window.statePolygon.setMap(map);
+        }).addTo(map);
 
         // Add click event to show state details
-        window.statePolygon.addListener('click', function (event) {
+        window.statePolygon.on('click', function (event) {
             showStateOverviewDetails(location, emotionalData);
         });
     }

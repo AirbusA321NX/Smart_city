@@ -45,7 +45,7 @@ app.post('/api/emotional-analysis', async (req, res) => {
     try {
         const { location, latitude, longitude } = req.body;
 
-        // In a real implementation, this would call the Mistral API with news data
+        // In a real implementation, this would call the Mistral API with news data and use Geoapify for location services
         // For now, we'll return mock data based on the location
         const emotionalData = {
             location: location,
@@ -354,8 +354,8 @@ app.post('/api/store-emotional-analysis', async (req, res) => {
     try {
         const data = req.body;
 
-        // In a real implementation, this would store in BigQuery
-        console.log('Storing emotional analysis in BigQuery:', data.location);
+        // In a real implementation, this would store in a database
+        console.log('Storing emotional analysis in database:', data.location);
 
         res.json({ success: true, message: 'Data stored successfully' });
     } catch (error) {
@@ -368,8 +368,8 @@ app.post('/api/store-raw-news-data', async (req, res) => {
     try {
         const { newsData } = req.body;
 
-        // In a real implementation, this would store in BigQuery
-        console.log(`Storing ${newsData.length} news articles in BigQuery`);
+        // In a real implementation, this would store in a database
+        console.log(`Storing ${newsData.length} news articles in database`);
 
         res.json({ success: true, count: newsData.length });
     } catch (error) {
@@ -382,12 +382,44 @@ app.post('/api/store-image-analysis', async (req, res) => {
     try {
         const { imagesWithAnalysis } = req.body;
 
-        // In a real implementation, this would store in Cloud Storage
-        console.log(`Storing ${imagesWithAnalysis.length} image analyses in Cloud Storage`);
+        // In a real implementation, this would store in a database
+        console.log(`Storing ${imagesWithAnalysis.length} image analyses in database`);
 
         res.json({ success: true, message: 'Images stored successfully' });
     } catch (error) {
         console.error('Error storing image analysis:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/upload-processed-data', async (req, res) => {
+    try {
+        const { data, dataType, location } = req.body;
+
+        // In a real implementation, this would upload to a storage system
+        console.log(`Uploading ${dataType} data for ${location} to storage`);
+
+        res.json({
+            success: true,
+            name: `${dataType}/${location}/${Date.now()}_${dataType}.json`,
+            url: `/data/${dataType}/${location}/${Date.now()}_${dataType}.json`
+        });
+    } catch (error) {
+        console.error('Error uploading processed data:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/cleanup-old-data', async (req, res) => {
+    try {
+        const { daysToKeep } = req.body;
+
+        // In a real implementation, this would delete old data from database
+        console.log(`Cleaning up data older than ${daysToKeep} days`);
+
+        res.json({ success: true, message: `Cleaned up data older than ${daysToKeep} days` });
+    } catch (error) {
+        console.error('Error cleaning up old data:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -433,38 +465,6 @@ app.post('/api/get-location-statistics', async (req, res) => {
         res.json(mockStats);
     } catch (error) {
         console.error('Error getting location statistics:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/upload-processed-data', async (req, res) => {
-    try {
-        const { data, dataType, location } = req.body;
-
-        // In a real implementation, this would upload to Cloud Storage
-        console.log(`Uploading ${dataType} data for ${location} to Cloud Storage`);
-
-        res.json({
-            success: true,
-            name: `${dataType}/${location}/${Date.now()}_${dataType}.json`,
-            url: `https://storage.googleapis.com/bucket/data/${dataType}/${location}/${Date.now()}_${dataType}.json`
-        });
-    } catch (error) {
-        console.error('Error uploading processed data:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/cleanup-old-data', async (req, res) => {
-    try {
-        const { daysToKeep } = req.body;
-
-        // In a real implementation, this would delete old data from BigQuery
-        console.log(`Cleaning up data older than ${daysToKeep} days`);
-
-        res.json({ success: true, message: `Cleaned up data older than ${daysToKeep} days` });
-    } catch (error) {
-        console.error('Error cleaning up old data:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

@@ -6,15 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>City Emotional Map - Real-Time Mood Detection</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Load Google Maps API -->
-    <script>
-        // Load Google Maps API with key from environment/config
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${window.API_CONFIG?.GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY'}&libraries=places&callback=initMapApp`;
-        document.head.appendChild(script);
-    </script>
+    <!-- Load Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
     <!-- Load Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Load Leaflet Heat plugin -->
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 </head>
 
 <body>
@@ -43,7 +41,7 @@
         <div class="main-content">
             <!-- Map Container -->
             <div class="map-container">
-                <div id="map"></div>
+                <div id="map" style="height: 100%; width: 100%;"></div>
                 <div id="map-overlay" class="map-overlay">
                     <div class="emotional-zones">
                         <div class="zone calm-zone">Calm Zone</div>
@@ -59,7 +57,7 @@
                 <div class="panel-header">
                     <h2>Live Emotional Statistics</h2>
                     <div class="powered-by-google">
-                        <img src="mistral-logo.png" alt="Powered by Mistral AI" style="height: 40px;">
+                        <img src="gemini+cloud.png" alt="Powered by Mistral AI" style="height: 40px;">
                     </div>
                 </div>
 
@@ -108,7 +106,7 @@
     <script src="mistral-api.js"></script>
     <script src="crawler.js"></script>
     <script src="visualization.js"></script>
-    <script src="google-cloud-integration.js"></script>
+    <script src="data-integration.js"></script>
     <script src="main-integration.js"></script>
 </body>
 

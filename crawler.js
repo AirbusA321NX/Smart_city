@@ -118,7 +118,7 @@ class IndianNewsCrawler {
     // Simply return the location as provided by the user
     extractCityName(location) {
         // Since the user provides the location directly through the search bar,
-        // we just return it as is for processing by Gemini
+        // we just return it as is for processing by Mistral AI
         return location;
     }
 
@@ -133,14 +133,14 @@ class IndianNewsCrawler {
         });
     }
 
-    // Analyze sentiment of articles - simplified to prepare for Gemini processing
+    // Analyze sentiment of articles - simplified to prepare for Mistral AI processing
     analyzeSentiment(articles) {
         return articles.map(article => {
             // Instead of hardcoded keyword matching, we'll prepare the articles
-            // for processing by Gemini which will handle the nuanced sentiment analysis
+            // for processing by Mistral AI which will handle the nuanced sentiment analysis
             return {
                 ...article,
-                // These will be populated by Gemini
+                // These will be populated by Mistral AI
                 detectedEmotion: null,
                 emotionStrength: null,
                 crimeRelated: null,
@@ -151,13 +151,12 @@ class IndianNewsCrawler {
     }
 
 
-
-    // Get summary statistics for the location - prepared for Gemini processing
+    // Get summary statistics for the location - prepared for Mistral AI processing
     getSummaryStats(articles) {
         const total = articles.length;
         if (total === 0) return null;
 
-        // This method now prepares the raw articles for processing by Gemini
+        // This method now prepares the raw articles for processing by Mistral AI
         // which will provide the detailed emotional analysis
         return {
             totalArticles: total,

@@ -1,15 +1,15 @@
 # City Emotional Map - Real-Time Mood Detection System
 
 <div align="center">
-  <img src="gemini+cloud.png" alt="Google Gemini Logo" width="500"/>
+  <img src="gemini+cloud.png" alt="Mistral AI Visualization" width="500"/>
 </div>
 
-This application creates a real-time emotional map of Indian cities using Google Gemini AI, multiple news APIs, and data visualization.
+This application creates a real-time emotional map of Indian cities using Mistral AI, Geoapify maps, multiple news APIs, and data visualization.
 
 ## Features
 
-- Interactive map with location search for Indian cities
-- Real-time emotion analysis using Google Gemini
+- Interactive map with location search for Indian cities using Geoapify
+- Real-time emotion analysis using Mistral AI
 - News crawling from multiple news APIs (NewsData.io, GNews, MediaStack, Currents, Newscatcher, Bing News, ContextualWeb, Apify, EventRegistry)
 - Data visualization with pie charts and bar graphs
 - Safety index calculation
@@ -20,15 +20,13 @@ This application creates a real-time emotional map of Indian cities using Google
 
 ### Prerequisites
 
-- A Google Cloud Platform account with billing enabled
-- Google Maps API key
-- Google Gemini API key
-- Access to Google Cloud services (BigQuery, Cloud Storage)
+- Geoapify API key
+- Mistral AI API key
 
 ### Configuration
 
-1. Obtain a Google Maps API key from the [Google Cloud Console](https://console.cloud.google.com/)
-2. Obtain a Google Gemini API key
+1. Obtain a Geoapify API key from the [Geoapify website](https://www.geoapify.com/)
+2. Obtain a Mistral AI API key
 3. Obtain API keys for news services (optional but recommended):
    - NewsData.io API key
    - GNews API key
@@ -39,12 +37,10 @@ This application creates a real-time emotional map of Indian cities using Google
    - ContextualWeb API key
    - Apify API key
    - EventRegistry API key
-4. Create a Google Cloud project and enable required APIs
-5. Update the API keys in the following files:
-   - `index.html` - Replace `YOUR_GOOGLE_MAPS_API_KEY` with your actual key
+4. Update the API keys in the following files:
    - `api-config.js` - Update all API keys in this centralized configuration file
    - `server.js` - Update news API keys in the NEWS_API_KEYS configuration
-6. Install dependencies: `npm install`
+5. Install dependencies: `npm install`
 
 ### Running the Application
 
@@ -60,15 +56,14 @@ This application creates a real-time emotional map of Indian cities using Google
 - `index.html` - Main HTML structure
 - `styles.css` - Styling and animations
 - `app.js` - Core application logic and map functionality
-- `gemini-api.js` - Google Gemini integration
+- `mistral-api.js` - Mistral AI integration
 - `crawler.js` - News crawling functionality
 - `visualization.js` - Data visualization components
-- `google-cloud-integration.js` - Google Cloud services integration
+- `data-integration.js` - Data integration services
 - `main-integration.js` - Orchestrates all components
 - `api-config.js` - Centralized API configuration
 - `server.js` - Backend server with news API integrations
 - `package.json` - Project dependencies and configuration
-- `google-powered-by.svg` - Google branding
 
 ## How It Works
 
@@ -77,44 +72,39 @@ flowchart LR
     A[User enters location in search bar] --> B{Request sent to server}
     B --> C[Crawl multiple news APIs for location-specific content]
     C --> D{Aggregate news articles}
-    D --> E[Send content to Google Gemini for emotion analysis]
+    D --> E[Send content to Mistral AI for emotion analysis]
     E --> F{Analyze emotional sentiment and safety index}
-    F --> G[Process facial expressions from images]
-    G --> H[Process audio stress indicators]
-    H --> I[Aggregate all emotional data]
-    I --> J{Generate comprehensive emotional profile}
-    J --> K[Display results on map & charts]
-    J --> L[Store data in Google Cloud]
-    K --> M[Update every 6 hours automatically]
-    L --> M
+    F --> G[Aggregate all emotional data]
+    G --> H{Generate comprehensive emotional profile}
+    H --> I[Display results on map & charts]
+    H --> J[Store data for historical analysis]
+    I --> K[Update every 6 hours automatically]
+    J --> K
 ```
 
 1. User enters a location in the search bar
 2. The system crawls multiple news APIs for location-specific content
-3. Google Gemini analyzes the content for emotional sentiment
-4. Facial expressions and audio are processed for additional emotion detection
-5. Results are displayed on the map and in data visualization charts
-6. Data is stored in Google Cloud for historical analysis
-7. The system updates automatically every 6 hours
+3. Mistral AI analyzes the content for emotional sentiment
+4. Results are displayed on the map and in data visualization charts
+5. Data is stored for historical analysis
+6. The system updates automatically every 6 hours
 
 ## System Architecture
 
 ```mermaid
 graph TD
-    A[User Interface - HTML/CSS/JS] --> B[Google Maps API]
-    A --> C[Gemini API]
+    A[User Interface - HTML/CSS/JS] --> B[Geoapify Maps API]
+    A --> C[Mistral API]
     A --> D[News APIs]
     D --> E[NewsData.io, GNews, MediaStack, Currents, Newscatcher, Bing News, ContextualWeb, Apify, EventRegistry]
-    C --> F[Gemini AI Processing]
+    C --> F[Mistral AI Processing]
     D --> G[News Content Analysis]
     F --> H[Emotion Analysis]
     G --> H
     H --> I[Data Aggregation]
     I --> J[Visualization - Chart.js]
-    I --> K[Google Cloud - BigQuery/Storage]
     B --> A
     J --> A
-    K --> A
 ```
 
 ## Technology Stack
@@ -129,7 +119,7 @@ graph TD
 - ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white) HTML5
 - ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white) CSS3
 - ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black) JavaScript (ES6+)
-- Google Maps JavaScript API
+- Leaflet.js with Geoapify
 - Chart.js
 
 ### Backend
@@ -138,7 +128,7 @@ graph TD
 - Axios (HTTP client)
 
 ### AI & Analytics
-- Google Gemini AI
+- Mistral AI
 - Emotion Analysis Algorithms
 
 ### News APIs
@@ -152,10 +142,9 @@ graph TD
 - Apify API
 - EventRegistry API
 
-### Cloud Services
-- ![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white) Google Cloud Platform
-- BigQuery
-- Cloud Storage
+### Mapping Services
+- Geoapify
+- Leaflet.js
 
 ### Other Technologies
 - Responsive design with CSS Grid and Flexbox

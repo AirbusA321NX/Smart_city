@@ -258,10 +258,10 @@ class EmotionalMapVisualizer {
     // Create emotional zones visualization on the map
     createEmotionalZonesMap() {
         // Create actual emotional zones on the map based on analysis data
-        if (window.map && window.google && window.google.maps) {
+        if (window.map) { // Using Leaflet map instead of Google Maps
             // Clear any existing zone markers
             if (this.emotionalZones) {
-                this.emotionalZones.forEach(zone => zone.setMap(null));
+                this.emotionalZones.forEach(zone => window.map.removeLayer(zone));
             }
             this.emotionalZones = [];
 
@@ -280,26 +280,12 @@ class EmotionalMapVisualizer {
 
     // Helper function to create an emotion marker
     createEmotionMarker(zone, map) {
-        const marker = new google.maps.Marker({
-            position: zone.position,
-            map: map,
-            icon: this.getEmotionIcon(zone.emotion, zone.intensity),
-            title: `${zone.emotion.charAt(0).toUpperCase() + zone.emotion.slice(1)} Zone (${zone.intensity}%)`
-        });
+        // Create Leaflet marker
+        const marker = L.marker([zone.position.lat, zone.position.lng], {
+            icon: this.getEmotionIcon(zone.emotion, zone.intensity)
+        }).addTo(map);
 
-        // Add info window with details
-        const infoWindow = new google.maps.InfoWindow({
-            content: `
-                <div class="zone-info">
-                    <h3>${zone.emotion.charAt(0).toUpperCase() + zone.emotion.slice(1)} Zone</h3>
-                    <p>Intensity: ${zone.intensity}%</p>
-                </div>
-            `
-        });
-
-        marker.addListener('click', () => {
-            infoWindow.open(map, marker);
-        });
+        marker.bindPopup(`${zone.emotion.charAt(0).toUpperCase() + zone.emotion.slice(1)} Zone (${zone.intensity}%)`);
 
         this.emotionalZones.push(marker);
     }
@@ -315,15 +301,16 @@ class EmotionalMapVisualizer {
             happy: '#f1c40f'      // Yellow
         };
 
-        // Create a colored circle icon based on emotion
-        return {
-            path: google.maps.SymbolPath.CIRCLE,
-            fillColor: colors[emotion] || '#7f8c8d', // Default gray if emotion not found
-            fillOpacity: intensity / 100,
-            strokeWeight: 1,
-            strokeColor: '#ffffff',
-            scale: 10 + (intensity / 10)
-        };
+        // Create a Leaflet DivIcon for the emotion marker
+        const radius = 10 + (intensity / 10);
+        const color = colors[emotion] || '#7f8c8d'; // Default gray if emotion not found
+
+        return L.divIcon({
+            className: 'emotion-marker',
+            html: `<div style="width: ${radius}px; height: ${radius}px; background-color: ${color}; border-radius: 50%; border: 2px solid white; opacity: ${intensity / 100};"></div>`,
+            iconSize: [radius, radius],
+            iconAnchor: [radius / 2, radius / 2]
+        });
     }
 
     // Update chart data with new emotional data
@@ -459,7 +446,7 @@ class EmotionalMapVisualizer {
     // Create animated emotional heatmap overlay
     createEmotionalHeatmap(location, emotions) {
         // Create a canvas overlay on the map showing heat distribution of emotions
-        if (window.map) { // Assuming Google Map is available as 'map'
+        if (window.map) { // Using Leaflet map instead of Google Maps
             // Prepare data for heatmap
             const heatmapData = [];
 
@@ -472,7 +459,8 @@ class EmotionalMapVisualizer {
 
                     locations.forEach(location => {
                         heatmapData.push({
-                            location: new google.maps.LatLng(location.lat, location.lng),
+                            lat: location.lat,
+                            lng: location.lng,
                             weight: location.weight || intensity
                         });
                     });
@@ -480,30 +468,23 @@ class EmotionalMapVisualizer {
             }
 
             // Create or update heatmap layer
-            if (this.heatmapLayer) {
-                this.heatmapLayer.setMap(null);
-            }
+            // Note: Leaflet doesn't have built-in heatmap layers like Google Maps
+            // We would need to use a plugin like leaflet-heat for this functionality
+            // For now, we'll skip heatmap functionality or use markers
 
-            this.heatmapLayer = new google.maps.visualization.HeatmapLayer({
-                data: heatmapData,
-                map: window.map,
-                dissipating: true,
-                maxIntensity: 100,
-                opacity: 0.6,
-                gradient: [
-                    'rgba(0, 255, 255, 0)',
-                    'rgba(0, 255, 255, 1)',
-                    'rgba(0, 191, 255, 1)',
-                    'rgba(0, 0, 255, 1)',
-                    'rgba(0, 0, 127, 1)',
-                    'rgba(127, 0, 255, 1)',
-                    'rgba(255, 0, 255, 1)',
-                    'rgba(255, 0, 127, 1)',
-                    'rgba(255, 0, 0, 1)',
-                    'rgba(255, 127, 0, 1)',
-                    'rgba(255, 255, 0, 1)',
-                    'rgba(255, 255, 127, 1)'
-                ]
+            // Alternative: Add markers for each location instead
+            heatmapData.forEach(point => {
+                const marker = L.circleMarker([point.lat, point.lng], {
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: point.weight / 100,
+                    radius: Math.max(5, point.weight / 10)
+                }).addTo(window.map);
+
+                if (!this.heatmapMarkers) {
+                    this.heatmapMarkers = [];
+                }
+                this.heatmapMarkers.push(marker);
             });
         }
     }
@@ -739,7 +720,7 @@ class EmotionalMapVisualizer {
                     },
                     x: {
                         grid: {
-                            color: 'rgba(255, 255, 0.05)'
+                            color: 'rgba(255, 255, 255, 0.05)'
                         },
                         ticks: {
                             color: '#fff'
