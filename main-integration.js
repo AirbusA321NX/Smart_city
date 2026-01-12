@@ -3,7 +3,7 @@
 
 class CityEmotionalMapSystem {
     constructor() {
-        this.geminiAnalyzer = null;
+        this.mistralAnalyzer = null;
         this.newsCrawler = null;
         this.visualizer = null;
         this.cloudIntegration = null;
@@ -52,7 +52,7 @@ class CityEmotionalMapSystem {
         try {
             // Wait for all components to be available
             await Promise.all([
-                checkComponent('GeminiEmotionAnalyzer'),
+                checkComponent('MistralEmotionAnalyzer'),
                 checkComponent('IndianNewsCrawler'),
                 checkComponent('EmotionalMapVisualizer'),
                 checkComponent('GoogleCloudIntegration')
@@ -66,7 +66,7 @@ class CityEmotionalMapSystem {
     // Initialize all components
     initializeComponents() {
         // Initialize Gemini Analyzer
-        this.geminiAnalyzer = new window.GeminiEmotionAnalyzer(window.API_CONFIG?.GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY');
+        this.mistralAnalyzer = new window.MistralEmotionAnalyzer(window.API_CONFIG?.MISTRAL_API_KEY || 'YOUR_MISTRAL_API_KEY');
 
         // Initialize News Crawler
         this.newsCrawler = new window.IndianNewsCrawler();
@@ -120,8 +120,8 @@ class CityEmotionalMapSystem {
             const newsData = await this.newsCrawler.crawlNewsForLocation(location);
             console.log(`Retrieved ${newsData.length} news articles`);
 
-            // Perform emotional analysis using Gemini
-            const emotionalAnalysis = await this.geminiAnalyzer.analyzeLocationEmotions(
+            // Perform emotional analysis using Mistral (image/audio data will use default analysis as Mistral doesn't support direct image/audio processing)
+            const emotionalAnalysis = await this.mistralAnalyzer.analyzeLocationEmotions(
                 location,
                 newsData
             );
@@ -190,8 +190,8 @@ class CityEmotionalMapSystem {
             // Crawl news for the location
             const newsData = await this.newsCrawler.crawlNewsForLocation(location);
 
-            // Perform emotional analysis
-            const emotionalAnalysis = await this.geminiAnalyzer.analyzeLocationEmotions(
+            // Perform emotional analysis (image/audio data will use default analysis as Mistral doesn't support direct image/audio processing)
+            const emotionalAnalysis = await this.mistralAnalyzer.analyzeLocationEmotions(
                 location,
                 newsData
             );
@@ -246,7 +246,7 @@ class CityEmotionalMapSystem {
     getSystemStatus() {
         return {
             components: {
-                gemini: !!this.geminiAnalyzer,
+                mistral: !!this.mistralAnalyzer,
                 crawler: !!this.newsCrawler,
                 visualizer: !!this.visualizer,
                 cloud: !!this.cloudIntegration

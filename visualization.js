@@ -101,7 +101,7 @@ class EmotionalMapVisualizer {
         this.charts.crimeBar = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: [], // Will be dynamically populated based on crime data from AI analysis
+                labels: [], // Will be dynamically populated based on crime data from Mistral AI analysis
                 datasets: [{
                     label: 'Incident Count',
                     data: [0, 0, 0, 0, 0, 0], // Will be updated with real data

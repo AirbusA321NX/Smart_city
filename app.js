@@ -251,7 +251,7 @@ function clearMarkers() {
 
 // Fetch data for location
 function fetchDataForLocation(location, lat, lng) {
-    // Call our backend API which integrates with Gemini and news sources
+    // Call our backend API which integrates with Mistral AI and news sources
     fetchEmotionalData(location, lat, lng);
 }
 

@@ -45,7 +45,7 @@ app.post('/api/emotional-analysis', async (req, res) => {
     try {
         const { location, latitude, longitude } = req.body;
 
-        // In a real implementation, this would call the Gemini API with news data
+        // In a real implementation, this would call the Mistral API with news data
         // For now, we'll return mock data based on the location
         const emotionalData = {
             location: location,

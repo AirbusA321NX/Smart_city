@@ -1,7 +1,7 @@
 {
     "name": "city-emotional-map",
     "version": "1.0.0",
-    "description": "Real-time emotional analysis and visualization system for Indian cities using Google Maps, Gemini AI, and news crawling",
+    "description": "Real-time emotional analysis and visualization system for Indian cities using Google Maps, Mistral AI, and news crawling",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
@@ -11,7 +11,7 @@
     "keywords": [
         "emotional-analysis",
         "google-maps",
-        "gemini-ai",
+        "mistral-ai",
         "news-crawling",
         "india",
         "safety-index"

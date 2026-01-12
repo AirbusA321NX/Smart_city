@@ -6,8 +6,8 @@ window.API_CONFIG = {
     // Google Maps API Key - replace with your actual key
     GOOGLE_MAPS_API_KEY: 'YOUR_GOOGLE_MAPS_API_KEY',
 
-    // Google Gemini API Key - replace with your actual key
-    GEMINI_API_KEY: 'YOUR_GEMINI_API_KEY',
+    // Mistral API Key - replace with your actual key
+    MISTRAL_API_KEY: 'YOUR_MISTRAL_API_KEY',
 
     // Google Cloud Configuration
     GC_PROJECT_ID: 'your-project-id',

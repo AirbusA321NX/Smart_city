@@ -59,11 +59,11 @@ class GoogleCloudIntegration {
     // Initialize Vertex AI endpoint
     initializeVertexAI() {
         // For client-side usage, we'll prepare configuration for server-side processing
-        // since Vertex AI client library requires server-side execution
+        // since Mistral AI client library requires server-side execution
         this.vertexAIConfig = {
-            apiEndpoint: `${this.config.region}-aiplatform.googleapis.com`,
+            apiEndpoint: 'https://api.mistral.ai', // Mistral API endpoint
             keyFilename: this.config.keyFilename, // Path to service account key file
-            location: this.config.region
+            // location: this.config.region // Not applicable for Mistral API
         };
     }
 
