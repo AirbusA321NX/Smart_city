@@ -196,3 +196,8 @@ class IndianNewsCrawler {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = IndianNewsCrawler;
 }
+
+// Make the class available globally in browser
+if (typeof window !== 'undefined') {
+    window.IndianNewsCrawler = IndianNewsCrawler;
+}

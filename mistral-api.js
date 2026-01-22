@@ -1,4 +1,4 @@
-// Mistral AI API Integration for Emotion Analysis
+﻿// Mistral AI API Integration for Emotion Analysis
 class MistralEmotionAnalyzer {
     constructor(apiKey) {
         this.apiKey = apiKey;
@@ -322,4 +322,9 @@ class MistralEmotionAnalyzer {
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = MistralEmotionAnalyzer;
+}
+
+// Make the class available globally in browser
+if (typeof window !== 'undefined') {
+    window.MistralEmotionAnalyzer = MistralEmotionAnalyzer;
 }

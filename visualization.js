@@ -748,159 +748,19 @@ class EmotionalMapVisualizer {
         }
     }
 
-    // Integrate with Twitter API
-    async integrateTwitterData(location) {
-        try {
-            const response = await fetch('/api/social/twitter', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    location: location,
-                    query: `location:${location} OR ${location.split(',')[0]}`
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Twitter API request failed with status ${response.status}`);
-            }
-
-            const twitterData = await response.json();
-            return this.processSocialMediaData(twitterData, 'twitter');
-        } catch (error) {
-            console.error('Error fetching Twitter data:', error);
-            return this.getDefaultSocialMediaData();
-        }
-    }
-
-    // Integrate with Facebook API
-    async integrateFacebookData(location) {
-        try {
-            const response = await fetch('/api/social/facebook', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    location: location,
-                    query: location
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Facebook API request failed with status ${response.status}`);
-            }
-
-            const facebookData = await response.json();
-            return this.processSocialMediaData(facebookData, 'facebook');
-        } catch (error) {
-            console.error('Error fetching Facebook data:', error);
-            return this.getDefaultSocialMediaData();
-        }
-    }
-
-    // Integrate with Instagram API
-    async integrateInstagramData(location) {
-        try {
-            const response = await fetch('/api/social/instagram', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    location: location,
-                    query: location
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Instagram API request failed with status ${response.status}`);
-            }
-
-            const instagramData = await response.json();
-            return this.processSocialMediaData(instagramData, 'instagram');
-        } catch (error) {
-            console.error('Error fetching Instagram data:', error);
-            return this.getDefaultSocialMediaData();
-        }
-    }
-
-    // Process social media data from all platforms
-    processSocialMediaData(rawData, platform) {
-        // Process raw data from social media API to extract sentiment
-        let positive = 0, neutral = 0, negative = 0;
-
-        if (rawData && rawData.posts) {
-            rawData.posts.forEach(post => {
-                // Simple sentiment analysis based on keywords (in real implementation, would use AI)
-                const text = post.text || post.caption || '';
-                const lowerText = text.toLowerCase();
-
-                if (this.containsPositiveKeywords(lowerText)) {
-                    positive++;
-                } else if (this.containsNegativeKeywords(lowerText)) {
-                    negative++;
-                } else {
-                    neutral++;
-                }
-            });
-        }
-
+    // Placeholder function for social media data (removed)
+    async aggregateSocialMediaData(location) {
+        // Social media integration has been removed
         return {
-            platform,
-            positive,
-            neutral,
-            negative,
-            total: positive + neutral + negative
-        };
-    }
-
-    // Check if text contains positive keywords
-    containsPositiveKeywords(text) {
-        const positiveKeywords = ['good', 'great', 'amazing', 'love', 'happy', 'wonderful', 'fantastic', 'excellent', 'nice', 'perfect', 'beautiful', 'awesome', 'brilliant', 'outstanding', 'superb'];
-        return positiveKeywords.some(keyword => text.includes(keyword));
-    }
-
-    // Check if text contains negative keywords
-    containsNegativeKeywords(text) {
-        const negativeKeywords = ['bad', 'terrible', 'awful', 'hate', 'sad', 'horrible', 'worst', 'disgusting', 'disappointing', 'frightening', 'scary', 'dangerous', 'fear', 'angry', 'upset'];
-        return negativeKeywords.some(keyword => text.includes(keyword));
-    }
-
-    // Get default social media data when API fails
-    getDefaultSocialMediaData() {
-        return {
-            platform: 'default',
             positive: 0,
             neutral: 0,
             negative: 0,
-            total: 0
-        };
-    }
-
-    // Aggregate data from all social media platforms
-    async aggregateSocialMediaData(location) {
-        // Fetch data from all platforms concurrently
-        const [twitterData, facebookData, instagramData] = await Promise.all([
-            this.integrateTwitterData(location),
-            this.integrateFacebookData(location),
-            this.integrateInstagramData(location)
-        ]);
-
-        // Aggregate the data
-        const aggregatedData = {
-            positive: twitterData.positive + facebookData.positive + instagramData.positive,
-            neutral: twitterData.neutral + facebookData.neutral + instagramData.neutral,
-            negative: twitterData.negative + facebookData.negative + instagramData.negative,
             platforms: {
-                twitter: twitterData,
-                facebook: facebookData,
-                instagram: instagramData
+                twitter: { positive: 0, neutral: 0, negative: 0, total: 0 },
+                facebook: { positive: 0, neutral: 0, negative: 0, total: 0 },
+                instagram: { positive: 0, neutral: 0, negative: 0, total: 0 }
             }
         };
-
-        return aggregatedData;
     }
 }
 
@@ -917,3 +777,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log('Emotional Map Visualizer initialized');
 });
+
+// Make the class available globally in browser
+if (typeof window !== 'undefined') {
+    window.EmotionalMapVisualizer = EmotionalMapVisualizer;
+}

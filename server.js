@@ -694,6 +694,25 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// API Configuration endpoint
+app.get('/api/config', (req, res) => {
+    res.json({
+        GEOAPIFY_API_KEY: process.env.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY',
+        MISTRAL_API_KEY: process.env.MISTRAL_API_KEY || 'YOUR_MISTRAL_API_KEY',
+        NEWS_API_KEYS: {
+            newsdata: process.env.NEWS_DATA_API_KEY || 'YOUR_NEWS_DATA_API_KEY',
+            mediastack: process.env.MEDIASTACK_API_KEY || 'YOUR_MEDIASTACK_API_KEY',
+            gnews: process.env.GNEWS_API_KEY || 'YOUR_GNEWS_API_KEY',
+            currents: process.env.CURRENTS_API_KEY || 'YOUR_CURRENTS_API_KEY',
+            newscatcher: process.env.NEWSCATCHER_API_KEY || 'YOUR_NEWSCATCHER_API_KEY',
+            contextualweb: process.env.CONTEXTUALWEB_API_KEY || 'YOUR_CONTEXTUALWEB_API_KEY',
+            bing: process.env.BING_NEWS_API_KEY || 'YOUR_BING_API_KEY',
+            apify: process.env.APIFY_API_KEY || 'YOUR_APIFY_API_KEY',
+            eventregistry: process.env.EVENTREGISTRY_API_KEY || 'YOUR_EVENTREGISTRY_API_KEY'
+        }
+    });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });

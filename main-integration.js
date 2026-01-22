@@ -75,7 +75,7 @@ class CityEmotionalMapSystem {
         this.visualizer = window.emotionalMapVisualizer;
 
         // Get reference to data integration
-        this.cloudIntegration = window.dataIntegration;
+        this.cloudIntegration = window.DataIntegration ? new window.DataIntegration() : null;
 
         // Start periodic crawling
         this.newsCrawler.schedulePeriodicCrawling();

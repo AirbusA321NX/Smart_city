@@ -4,6 +4,28 @@ let markers = [];
 let emotionPieChart;
 let crimeBarChart;
 
+// Fetch API configuration from server
+async function loadAPIConfig() {
+    try {
+        const response = await fetch('/api/config');
+        if (!response.ok) {
+            throw new Error(`API config request failed with status ${response.status}`);
+        }
+        window.API_CONFIG = await response.json();
+        console.log('API configuration loaded successfully');
+    } catch (error) {
+        console.error('Error loading API configuration:', error);
+        // Fallback to default values
+        window.API_CONFIG = {
+            GEOAPIFY_API_KEY: 'YOUR_GEOAPIFY_API_KEY',
+            MISTRAL_API_KEY: 'YOUR_MISTRAL_API_KEY'
+        };
+    }
+}
+
+// Load API configuration when page loads
+loadAPIConfig();
+
 // Initialize the application
 function initMapApp() {
     initializeMap();
@@ -382,8 +404,8 @@ async function updateUIWithData(data) {
                 window.emotionalMapVisualizer.updateSocialMediaChart(socialMediaData);
             }
 
-            // Add the social media data to the emotionalData object for other components
-            emotionalData.socialMediaData = socialMediaData;
+            // Add the social media data to the data object for other components
+            data.socialMediaData = socialMediaData;
         } catch (error) {
             console.error('Error integrating social media data:', error);
         }
@@ -468,7 +490,7 @@ function updateCrimeChart(crimes) {
     }
 
     // Extract crime types and counts from the crimes object
-    const crimeTypes = Object.keys(crimes);
+    const crimeTypes = Object.keys(crimes || {});
     const crimeCounts = crimeTypes.map(type => crimes[type]);
 
     // Generate colors based on the number of crime types
