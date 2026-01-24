@@ -128,8 +128,9 @@ graph TD
 - Axios (HTTP client)
 
 ### AI & Analytics
-- Mistral AI
+- Google Gemini AI (gemini-2.0-flash-exp)
 - Emotion Analysis Algorithms
+- Multimodal Analysis (Text + Images)
 
 ### News APIs
 - NewsData.io API
