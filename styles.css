@@ -476,3 +476,135 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.5);
 }
+
+/* Cr
+ime Timeline Styles */
+.period-info {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+.period-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.period-stat:last-child {
+    border-bottom: none;
+}
+
+.period-label {
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+.period-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.period-value.positive {
+    color: #2ecc71;
+}
+
+.period-value.negative {
+    color: #e74c3c;
+}
+
+.period-value.neutral {
+    color: #f1c40f;
+}
+
+.trend-indicator {
+    display: inline-block;
+    margin-left: 5px;
+}
+
+.trend-up::before {
+    content: '↑';
+    color: #e74c3c;
+}
+
+.trend-down::before {
+    content: '↓';
+    color: #2ecc71;
+}
+
+.trend-stable::before {
+    content: '→';
+    color: #f1c40f;
+}
+
+/* Crime List Styles */
+.crime-list-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.crime-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.crime-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    border-left: 3px solid #e74c3c;
+    transition: all 0.3s ease;
+}
+
+.crime-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.crime-type {
+    font-weight: 500;
+    color: #fff;
+    font-size: 0.95rem;
+}
+
+.crime-count {
+    font-weight: 700;
+    color: #e74c3c;
+    font-size: 1.1rem;
+    background: rgba(231, 76, 60, 0.2);
+    padding: 4px 12px;
+    border-radius: 12px;
+}
+
+.period-summary,
+.trend-summary {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.recommendations-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(46, 204, 113, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid #2ecc71;
+}
+
+.recommendations-section h4 {
+    color: #2ecc71 !important;
+}
+
+.recommendations-section li {
+    color: #fff;
+    line-height: 1.6;
+}
