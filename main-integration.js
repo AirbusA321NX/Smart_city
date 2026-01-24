@@ -31,7 +31,7 @@ class CityEmotionalMapSystem {
 
     // Wait for all component scripts to load
     async waitForComponents() {
-        const checkComponent = (componentName, timeout = 5000) => {
+        const checkComponent = (componentName, timeout = 10000) => {
             return new Promise((resolve, reject) => {
                 const startTime = Date.now();
 
@@ -39,7 +39,8 @@ class CityEmotionalMapSystem {
                     if (window[componentName]) {
                         resolve(window[componentName]);
                     } else if (Date.now() - startTime > timeout) {
-                        reject(new Error(`${componentName} did not load in time`));
+                        console.warn(`${componentName} did not load in time, continuing anyway`);
+                        resolve(null); // Resolve with null instead of rejecting
                     } else {
                         setTimeout(check, 100);
                     }
@@ -51,15 +52,22 @@ class CityEmotionalMapSystem {
 
         try {
             // Wait for all components to be available
-            await Promise.all([
-                checkComponent('MistralEmotionAnalyzer'),
-                checkComponent('IndianNewsCrawler'),
-                checkComponent('EmotionalMapVisualizer'),
-                checkComponent('DataIntegration')
+            const components = await Promise.all([
+                checkComponent('MistralEmotionAnalyzer', 10000),
+                checkComponent('IndianNewsCrawler', 10000),
+                checkComponent('EmotionalMapVisualizer', 10000),
+                checkComponent('DataIntegration', 10000)
             ]);
+            
+            console.log('Components loaded:', {
+                mistral: !!components[0],
+                crawler: !!components[1],
+                visualizer: !!components[2],
+                dataIntegration: !!components[3]
+            });
         } catch (error) {
             console.error('Error waiting for components:', error);
-            throw error;
+            // Don't throw, continue with available components
         }
     }
 

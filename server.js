@@ -7,6 +7,21 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const path = require('path');
 const topojson = require('topojson-client');
+const AIAPIManager = require('./ai-api-manager');
+const NewsScraper = require('./news-scraper');
+
+// Initialize AI API Manager with automatic fallback
+const aiManager = new AIAPIManager(
+    process.env.GEMINI_API_KEY,
+    process.env.MISTRAL_API_KEY
+);
+
+// Initialize News Scraper
+const newsScraper = new NewsScraper();
+
+console.log('AI API Manager initialized with Gemini (primary) and Mistral (fallback)');
+console.log('Automatic fallback enabled: Mistral will be used if Gemini hits rate limits');
+console.log('News Scraper initialized: Will scrape Google News, Times of India, and The Hindu');
 
 // Configuration for news APIs
 const NEWS_API_KEYS = {
@@ -49,89 +64,123 @@ app.post('/api/emotional-analysis', async (req, res) => {
     try {
         const { location, latitude, longitude } = req.body;
 
-        // Call Mistral AI API for emotional analysis
-        const mistralApiKey = process.env.MISTRAL_API_KEY || 'YOUR_MISTRAL_API_KEY';
+        // Scrape news from multiple sources
+        console.log(`\n📰 Fetching news for ${location} via web scraping...`);
+        const newsArticles = await newsScraper.scrapeAllSources(location, 25);
+        
+        console.log(`✓ Retrieved ${newsArticles.length} articles via scraping`);
 
-        // Get news data for the location
-        const newsResponse = await axios.get(`https://gnews.io/api/v4/search?q=${encodeURIComponent(location)}&token=${NEWS_API_KEYS.gnews}&lang=en&country=in`);
-        const newsArticles = newsResponse.data?.articles || [];
-
-        // Prepare content for Mistral API
-        const newsContent = newsArticles.slice(0, 5).map(article =>
-            `Title: ${article.title}\nDescription: ${article.description || ''}`
+        // Prepare content for AI analysis
+        let newsContent = newsArticles.slice(0, 10).map(article =>
+            `Title: ${article.title}\nDescription: ${article.description || ''}\nSource: ${article.source}`
         ).join('\n\n');
 
-        // Call Mistral API for sentiment/emotion analysis
-        const mistralResponse = await axios.post('https://api.mistral.ai/v1/chat/completions', {
-            model: 'mistral-large-latest',
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You are an expert at analyzing news articles to determine emotional sentiment and safety metrics for locations in India. Analyze the provided news articles and return a JSON response with the following structure: {safetyIndex: number (0-100), aggregatedEmotions: {calm: number, angry: number, depressed: number, fear: number, happy: number}, crimeStats: {theft?: number, assault?: number, harassment?: number, robbery?: number, other?: number}, news: Array of objects with title, content, emotion, sentiment, and location properties}'
-                },
-                {
-                    role: 'user',
-                    content: `Analyze the following news articles for ${location} and provide emotional and safety insights:\n\n${newsContent}`
-                }
-            ],
-            temperature: 0.3
-        }, {
-            headers: {
-                'Authorization': `Bearer ${mistralApiKey}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const aiAnalysis = mistralResponse.data.choices[0].message.content;
-
-        // Attempt to extract JSON from AI response (assuming it returns structured data)
-        let parsedData = {};
-        try {
-            // Look for JSON within the response, potentially surrounded by markdown
-            const jsonMatch = aiAnalysis.match(/```(?:json)?\n([\s\S]*?)\n```|({[\s\S]*?})/);
-            if (jsonMatch) {
-                const jsonData = jsonMatch[1] || jsonMatch[2];
-                parsedData = JSON.parse(jsonData);
-            } else {
-                // If no JSON found, return basic structure
-                parsedData = {};
-            }
-        } catch (e) {
-            console.log('Could not parse AI response as JSON, using defaults');
-            parsedData = {};
+        // If no content, use generic content
+        if (!newsContent.trim()) {
+            newsContent = `Analyzing general safety and emotional climate for ${location}. No specific news articles available at this time.`;
         }
 
-        // Construct emotionalData with fallbacks to avoid any hardcoded values
+        // Use AI API Manager with automatic fallback
+        console.log(`Analyzing ${location} with AI (Gemini primary, Mistral fallback, Simple Analyzer last resort)...`);
+        const [geminiAnalysis, crimeTimeline] = await Promise.all([
+            aiManager.analyzeTextSentiment(newsContent, location, { includeTimeline: true, articles: newsArticles }),
+            aiManager.getCrimeTimeline(location, newsArticles, 1)
+        ]);
+
+        // Construct emotionalData
         const emotionalData = {
             location: location,
-            safetyIndex: parsedData.safetyIndex || 0,
-            aggregatedEmotions: parsedData.aggregatedEmotions || {
-                calm: 0,
-                angry: 0,
-                depressed: 0,
-                fear: 0,
-                happy: 0
+            safetyIndex: geminiAnalysis.safetyIndex || 50,
+            aggregatedEmotions: geminiAnalysis.aggregatedEmotions || {
+                calm: 20,
+                angry: 20,
+                depressed: 20,
+                fear: 20,
+                happy: 20
             },
-            crimeStats: parsedData.crimeStats || {},
-            news: parsedData.news || newsArticles.map(article => ({
+            crimeStats: geminiAnalysis.crimeStats || {},
+            monthlyTrends: geminiAnalysis.monthlyTrends || crimeTimeline.monthlyData || [],
+            currentPeriod: geminiAnalysis.currentPeriod || crimeTimeline.currentMonth || {},
+            crimeTimeline: crimeTimeline,
+            news: newsArticles.map(article => ({
                 title: article.title,
                 content: article.description,
                 emotion: 'neutral',
                 sentiment: 'neutral',
-                location: location
+                location: location,
+                publishedAt: article.publishedAt,
+                source: article.source
             })),
-            timeBasedCrimes: parsedData.timeBasedCrimes || Array(24).fill(0),
-            historicalData: parsedData.historicalData || {
-                dates: [],
-                safetyTrend: []
+            timeBasedCrimes: Array(24).fill(0),
+            historicalData: {
+                dates: crimeTimeline.monthlyData?.map(m => m.month) || [],
+                safetyTrend: crimeTimeline.monthlyData?.map(m => m.safetyIndex) || []
             },
-            geographicZones: parsedData.geographicZones || []
+            geographicZones: [],
+            apiUsed: geminiAnalysis.apiUsed || crimeTimeline.apiUsed || 'unknown',
+            newsSource: 'Web Scraping (Google News, TOI, The Hindu)',
+            timestamp: new Date().toISOString()
         };
 
+        console.log(`✓ Analysis complete for ${location}. Safety Index: ${emotionalData.safetyIndex}, API: ${emotionalData.apiUsed}`);
         res.json(emotionalData);
     } catch (error) {
         console.error('Error in emotional analysis:', error);
-        res.status(500).json({ error: 'Internal server error' });
+
+        // Return fallback data instead of error
+        res.json({
+            location: req.body.location,
+            safetyIndex: 50,
+            aggregatedEmotions: {
+                calm: 20,
+                angry: 20,
+                depressed: 20,
+                fear: 20,
+                happy: 20
+            },
+            crimeStats: {},
+            monthlyTrends: [],
+            currentPeriod: {},
+            crimeTimeline: {
+                monthlyData: [],
+                overallTrend: { direction: 'stable' }
+            },
+            news: [],
+            timeBasedCrimes: Array(24).fill(0),
+            historicalData: { dates: [], safetyTrend: [] },
+            geographicZones: [],
+            apiUsed: 'fallback',
+            warning: 'Using fallback data due to API errors',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Get crime timeline endpoint
+app.post('/api/crime-timeline', async (req, res) => {
+    try {
+        const { location, months = 1 } = req.body;
+
+        // Get news data for the location
+        const newsResponse = await axios.get(`https://gnews.io/api/v4/search?q=${encodeURIComponent(location + ' crime')}&token=${NEWS_API_KEYS.gnews}&lang=en&country=in&max=20`);
+        const newsArticles = newsResponse.data?.articles || [];
+
+        console.log(`Fetching crime timeline for ${location} (${months} months)...`);
+
+        // Get crime timeline from AI Manager (with automatic fallback)
+        const timeline = await aiManager.getCrimeTimeline(location, newsArticles, months);
+
+        res.json({
+            success: true,
+            timeline
+        });
+    } catch (error) {
+        console.error('Error fetching crime timeline:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            details: error.message
+        });
     }
 });
 
@@ -697,6 +746,29 @@ app.get('/', (req, res) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// API status endpoint
+app.get('/api/ai-status', (req, res) => {
+    const status = aiManager.getStatus();
+    res.json({
+        success: true,
+        status: status,
+        message: status.gemini.available
+            ? 'Gemini AI is active'
+            : status.mistral.available
+                ? 'Using Mistral AI (Gemini unavailable)'
+                : 'Both APIs unavailable - using fallback data'
+    });
+});
+
+// Reset API status endpoint (useful after quota resets)
+app.post('/api/ai-reset', (req, res) => {
+    aiManager.resetStatus();
+    res.json({
+        success: true,
+        message: 'API status reset - both APIs marked as available'
+    });
 });
 
 // Start server
