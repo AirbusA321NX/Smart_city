@@ -274,9 +274,9 @@ body {
 /* Chart Containers */
 .chart-container {
     background: rgba(255, 255, 255, 0.15);
-    padding: 20px;
+    padding: 10px;
     border-radius: 12px;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
 }
 
 .chart-container h3 {
@@ -287,7 +287,7 @@ body {
 #emotion-pie-chart,
 #crime-bar-chart {
     width: 100% !important;
-    height: 200px !important;
+    height: 50px !important;
 }
 
 /* Live Feed */
@@ -303,7 +303,7 @@ body {
 }
 
 .news-container {
-    max-height: 200px;
+    max-height: 100px;
     overflow-y: auto;
 }
 

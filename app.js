@@ -1,8 +1,6 @@
 // Global variables
 let map;
 let markers = [];
-let emotionPieChart;
-let crimeBarChart;
 
 // Fetch API configuration from server
 async function loadAPIConfig() {
@@ -350,7 +348,7 @@ async function fetchEmotionalData(location, lat, lng) {
         // Fallback to empty data
         const emptyData = {
             safetyIndex: 0,
-            emotions: { calm: 0, angry: 0, depressed: 0, fear: 0, happy: 0 },
+            aggregatedEmotions: { calm: 0, angry: 0, depressed: 0, fear: 0, happy: 0 },
             crimeStats: {},
             news: []
         };
@@ -364,10 +362,10 @@ async function updateUIWithData(data) {
     updateSafetyIndex(data.safetyIndex);
 
     // Update emotion pie chart
-    updateEmotionChart(data.emotions);
+    updateEmotionChart(data.aggregatedEmotions || data.emotions);
 
     // Update crime bar chart
-    updateCrimeChart(data.crimes);
+    updateCrimeChart(data.crimeStats || data.crimes);
 
     // Update news feed
     updateNewsFeed(data.news);
@@ -434,110 +432,18 @@ function updateSafetyIndex(score) {
 
 // Update emotion pie chart
 function updateEmotionChart(emotions) {
-    const ctx = document.getElementById('emotion-pie-chart').getContext('2d');
-
-    // Destroy existing chart if it exists
-    if (emotionPieChart) {
-        emotionPieChart.destroy();
+    // Use the visualization.js chart instead
+    if (window.emotionalMapVisualizer && typeof window.emotionalMapVisualizer.updateEmotionChart === 'function') {
+        window.emotionalMapVisualizer.updateEmotionChart(emotions);
     }
-
-    emotionPieChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: ['Calm', 'Angry', 'Depressed', 'Fear'],
-            datasets: [{
-                data: [
-                    emotions.calm,
-                    emotions.angry,
-                    emotions.depressed,
-                    emotions.fear
-                ],
-                backgroundColor: [
-                    '#2ecc71',
-                    '#e74c3c',
-                    '#34495e',
-                    '#9b59b6'
-                ],
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: '#fff',
-                        font: {
-                            size: 12
-                        }
-                    }
-                }
-            }
-        }
-    });
 }
 
 // Update crime bar chart
 function updateCrimeChart(crimes) {
-    const ctx = document.getElementById('crime-bar-chart').getContext('2d');
-
-    // Destroy existing chart if it exists
-    if (crimeBarChart) {
-        crimeBarChart.destroy();
+    // Use the visualization.js chart instead
+    if (window.emotionalMapVisualizer && typeof window.emotionalMapVisualizer.updateCrimeChart === 'function') {
+        window.emotionalMapVisualizer.updateCrimeChart(crimes);
     }
-
-    // Extract crime types and counts from the crimes object
-    const crimeTypes = Object.keys(crimes || {});
-    const crimeCounts = crimeTypes.map(type => crimes[type]);
-
-    // Generate colors based on the number of crime types
-    const backgroundColors = generateColors(crimeTypes.length, 'rgba', 0.7);
-    const borderColors = generateColors(crimeTypes.length, 'rgba', 1);
-
-    crimeBarChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: crimeTypes, // Dynamic labels from crime data
-            datasets: [{
-                label: 'Incident Count',
-                data: crimeCounts, // Dynamic data from crime counts
-                backgroundColor: backgroundColors,
-                borderColor: borderColors,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        color: '#fff'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: '#fff'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                }
-            }
-        }
-    });
 }
 
 // Update news feed
@@ -583,7 +489,7 @@ function loadSampleData() {
     // Initialize UI with empty data
     const emptyData = {
         safetyIndex: 0,
-        emotions: { calm: 0, angry: 0, depressed: 0, fear: 0, happy: 0 },
+        aggregatedEmotions: { calm: 0, angry: 0, depressed: 0, fear: 0, happy: 0 },
         crimeStats: {},
         news: []
     };
@@ -1496,32 +1402,30 @@ function getPredictiveInsights(emotionalData) {
 function analyzeEmotionalTrends(historicalData) {
     const trends = [];
 
-    // Compare recent data with past averages
-    const recentAvg = historicalData.slice(-3); // Last 3 data points
-    const pastAvg = historicalData.slice(0, -3); // Previous data points
+    // Validate historical data structure
+    if (!historicalData || !historicalData.dates || !historicalData.safetyTrend) {
+        return trends;
+    }
 
-    // Calculate trend for each emotion
-    const emotions = ['angry', 'fear', 'depressed', 'calm', 'happy'];
+    // Only analyze if we have sufficient data points
+    if (historicalData.dates.length < 2 || historicalData.safetyTrend.length < 2) {
+        return trends;
+    }
 
-    emotions.forEach(emotion => {
-        const recentValues = recentAvg.map(d => d.emotions[emotion]).filter(v => v !== undefined);
-        const pastValues = pastAvg.map(d => d.emotions[emotion]).filter(v => v !== undefined);
-
-        if (recentValues.length > 0 && pastValues.length > 0) {
-            const recentMean = recentValues.reduce((a, b) => a + b, 0) / recentValues.length;
-            const pastMean = pastValues.reduce((a, b) => a + b, 0) / pastValues.length;
-
-            const change = ((recentMean - pastMean) / pastMean) * 100;
-
-            if (Math.abs(change) > 10) { // Significant change threshold
-                trends.push({
-                    emotion,
-                    change: Math.round(change),
-                    direction: change > 0 ? 'increasing' : 'decreasing'
-                });
-            }
-        }
-    });
+    // Calculate safety trend changes
+    const recentSafety = historicalData.safetyTrend[historicalData.safetyTrend.length - 1];
+    const previousSafety = historicalData.safetyTrend[historicalData.safetyTrend.length - 2];
+    
+    const safetyChange = ((recentSafety - previousSafety) / previousSafety) * 100;
+    
+    if (Math.abs(safetyChange) > 5) { // 5% threshold for significant change
+        trends.push({
+            emotion: 'overall_safety',
+            change: Math.round(safetyChange),
+            direction: safetyChange > 0 ? 'improving' : 'deteriorating',
+            metric: 'safety_index'
+        });
+    }
 
     return trends;
 }

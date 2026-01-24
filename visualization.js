@@ -80,10 +80,9 @@ class EmotionalMapVisualizer {
                     }
                 },
                 animation: {
-                    animateRotate: true,
-                    animateScale: true,
-                    duration: 1500,
-                    easing: 'easeOutQuart'
+                    animateRotate: false,
+                    animateScale: false,
+                    duration: 0
                 }
             }
         });
@@ -165,8 +164,7 @@ class EmotionalMapVisualizer {
                     }
                 },
                 animation: {
-                    duration: 1500,
-                    easing: 'easeOutQuart'
+                    duration: 0
                 }
             }
         });

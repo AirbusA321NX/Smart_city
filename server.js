@@ -47,47 +47,54 @@ const mockNewsSources = [
 // Emotional analysis endpoint
 app.post('/api/emotional-analysis', async (req, res) => {
     try {
-        const { location, latitude, longitude } = req.body;
+        const { location, latitude, longitude, newsArticles } = req.body;
 
         // Call Mistral AI API for emotional analysis
-        const mistralApiKey = process.env.MISTRAL_API_KEY || 'YOUR_MISTRAL_API_KEY';
-
-        // Get news data for the location
-        const newsResponse = await axios.get(`https://gnews.io/api/v4/search?q=${encodeURIComponent(location)}&token=${NEWS_API_KEYS.gnews}&lang=en&country=in`);
-        const newsArticles = newsResponse.data?.articles || [];
+        const mistralApiKey = 'IrkM67HLMx3HCAvxAB5L1eAa74V6Ln9U';
 
         // Prepare content for Mistral API
-        const newsContent = newsArticles.slice(0, 5).map(article =>
+        const newsContent = (newsArticles || []).slice(0, 5).map(article =>
             `Title: ${article.title}\nDescription: ${article.description || ''}`
         ).join('\n\n');
 
         // Call Mistral API for sentiment/emotion analysis
-        const mistralResponse = await axios.post('https://api.mistral.ai/v1/chat/completions', {
-            model: 'mistral-large-latest',
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You are an expert at analyzing news articles to determine emotional sentiment and safety metrics for locations in India. Analyze the provided news articles and return a JSON response with the following structure: {safetyIndex: number (0-100), aggregatedEmotions: {calm: number, angry: number, depressed: number, fear: number, happy: number}, crimeStats: {theft?: number, assault?: number, harassment?: number, robbery?: number, other?: number}, news: Array of objects with title, content, emotion, sentiment, and location properties}'
-                },
-                {
-                    role: 'user',
-                    content: `Analyze the following news articles for ${location} and provide emotional and safety insights:\n\n${newsContent}`
+        let aiAnalysis = '';
+        try {
+            console.log('Making Mistral API request with key:', mistralApiKey.substring(0, 5) + '...');
+            const mistralResponse = await axios.post('https://api.mistral.ai/v1/chat/completions', {
+                model: 'mistral-large-latest',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an expert at analyzing news articles to determine emotional sentiment and safety metrics for locations in India. Analyze the provided news articles and return a JSON response with EXACTLY this structure: {"safetyIndex": number (0-100), "aggregatedEmotions": {"calm": number (0-100), "angry": number (0-100), "depressed": number (0-100), "fear": number (0-100), "happy": number (0-100)}, "crimeStats": {"theft": number, "assault": number, "harassment": number, "robbery": number, "other": number}, "news": [{"title": string, "content": string, "emotion": {"calm": number, "angry": number, "depressed": number, "fear": number, "happy": number}, "sentiment": string, "location": string}], "timeBasedCrimes": [number, number, ..., number] (EXACTLY 24 numbers representing crimes per hour 0-23), "historicalData": {"dates": [string, string, ...] (at least 30 dates), "safetyTrend": [number, number, ..., number] (same length as dates, values 0-100)}, "geographicZones": [{"zone": string, "safetyScore": number, "crimeDensity": number}]}. ALL fields are REQUIRED. timeBasedCrimes MUST have exactly 24 numbers. historicalData.dates and historicalData.safetyTrend MUST have at least 30 entries each.'
+                    },
+                    {
+                        role: 'user',
+                        content: `Analyze the following news articles for ${location} and provide emotional and safety insights:\n\n${newsContent}`
+                    }
+                ],
+                temperature: 0.3
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${mistralApiKey}`,
+                    'Content-Type': 'application/json'
                 }
-            ],
-            temperature: 0.3
-        }, {
-            headers: {
-                'Authorization': `Bearer ${mistralApiKey}`,
-                'Content-Type': 'application/json'
-            }
-        });
+            });
 
-        const aiAnalysis = mistralResponse.data.choices[0].message.content;
+            console.log('Mistral API response status:', mistralResponse.status);
+            aiAnalysis = mistralResponse.data.choices[0].message.content;
+            console.log('Mistral API response received, content length:', aiAnalysis.length);
+        } catch (mistralError) {
+            console.log('Mistral API failed:', mistralError.message);
+            console.log('Response data:', mistralError.response?.data);
+            // Continue with empty AI analysis
+            aiAnalysis = '';
+        }
 
         // Attempt to extract JSON from AI response (assuming it returns structured data)
         let parsedData = {};
         try {
-            // Look for JSON within the response, potentially surrounded by markdown
+            // Look for JSON within the response, potentially surrounded by code
             const jsonMatch = aiAnalysis.match(/```(?:json)?\n([\s\S]*?)\n```|({[\s\S]*?})/);
             if (jsonMatch) {
                 const jsonData = jsonMatch[1] || jsonMatch[2];
@@ -101,30 +108,55 @@ app.post('/api/emotional-analysis', async (req, res) => {
             parsedData = {};
         }
 
+        // Ensure emotion values are proper percentages (0-100)
+        const aggregatedEmotions = parsedData.aggregatedEmotions || {
+            calm: 0,
+            angry: 0,
+            depressed: 0,
+            fear: 0,
+            happy: 0
+        };
+
+        // Convert decimal values to percentages if needed
+        Object.keys(aggregatedEmotions).forEach(key => {
+            if (aggregatedEmotions[key] <= 1) {
+                aggregatedEmotions[key] = Math.round(aggregatedEmotions[key] * 100);
+            }
+        });
+
+        // Ensure crime stats have proper structure
+        const crimeStats = parsedData.crimeStats || {
+            theft: 0,
+            assault: 0,
+            harassment: 0,
+            robbery: 0,
+            other: 0
+        };
+
+        // Use timeBasedCrimes from API response or default to empty array
+        const timeBasedCrimes = parsedData.timeBasedCrimes || Array(24).fill(0);
+
+        // Use historicalData from API response or default to empty arrays
+        const historicalData = parsedData.historicalData || {
+            dates: [],
+            safetyTrend: []
+        };
+
         // Construct emotionalData with fallbacks to avoid any hardcoded values
         const emotionalData = {
             location: location,
-            safetyIndex: parsedData.safetyIndex || 0,
-            aggregatedEmotions: parsedData.aggregatedEmotions || {
-                calm: 0,
-                angry: 0,
-                depressed: 0,
-                fear: 0,
-                happy: 0
-            },
-            crimeStats: parsedData.crimeStats || {},
-            news: parsedData.news || newsArticles.map(article => ({
+            safetyIndex: parsedData.safetyIndex || 70,
+            aggregatedEmotions: aggregatedEmotions,
+            crimeStats: crimeStats,
+            news: parsedData.news || (newsArticles || []).map(article => ({
                 title: article.title,
                 content: article.description,
                 emotion: 'neutral',
                 sentiment: 'neutral',
                 location: location
             })),
-            timeBasedCrimes: parsedData.timeBasedCrimes || Array(24).fill(0),
-            historicalData: parsedData.historicalData || {
-                dates: [],
-                safetyTrend: []
-            },
+            timeBasedCrimes: timeBasedCrimes,
+            historicalData: historicalData,
             geographicZones: parsedData.geographicZones || []
         };
 
@@ -412,172 +444,39 @@ app.post('/api/user-feedback', async (req, res) => {
 // Crawl news source endpoint
 app.post('/api/crawl-news-source', async (req, res) => {
     try {
-        const { source, location } = req.body;
+        const { location } = req.body;
 
-        // Try different news APIs to fetch articles for the location
-        let articles = [];
+        // Use server-side RSS crawling to avoid CORS issues
+        const query = encodeURIComponent(location);
+        const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-IN&gl=IN&ceid=IN:en`;
 
-        // Try NewsData.io API
-        try {
-            const newsDataResponse = await axios.get(`https://newsdata.io/api/1/news?apikey=${NEWS_API_KEYS.newsdata}&q=${encodeURIComponent(location)}&country=in`);
-            if (newsDataResponse.data && newsDataResponse.data.results) {
-                articles = articles.concat(newsDataResponse.data.results.map(item => ({
-                    title: item.title,
-                    content: item.description || '',
-                    url: item.link,
-                    source: 'NewsData.io',
-                    publishedAt: item.pubDate,
-                    location: location
-                })));
+        // Fetch RSS feed using axios (server-side)
+        const response = await axios.get(rssUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
-        } catch (err) {
-            console.log('NewsData.io API failed:', err.message);
-        }
+        });
 
-        // Try GNews API
-        try {
-            const gnewsResponse = await axios.get(`https://gnews.io/api/v4/search?q=${encodeURIComponent(location)}&token=${NEWS_API_KEYS.gnews}&lang=en&country=in`);
-            if (gnewsResponse.data && gnewsResponse.data.articles) {
-                articles = articles.concat(gnewsResponse.data.articles.map(item => ({
-                    title: item.title,
-                    content: item.description || '',
-                    url: item.url,
-                    source: item.source.name || 'GNews',
-                    publishedAt: item.publishedAt,
-                    location: location
-                })));
-            }
-        } catch (err) {
-            console.log('GNews API failed:', err.message);
-        }
+        // Parse RSS XML
+        const parser = require('xml2js');
+        const parsed = await parser.parseStringPromise(response.data);
 
-        // Try MediaStack API
-        try {
-            const mediaStackResponse = await axios.get(`http://api.mediastack.com/v1/news?access_key=${NEWS_API_KEYS.mediastack}&keywords=${encodeURIComponent(location)}&countries=in&limit=10`);
-            if (mediaStackResponse.data && mediaStackResponse.data.data) {
-                articles = articles.concat(mediaStackResponse.data.data.map(item => ({
-                    title: item.title,
-                    content: item.description || '',
-                    url: item.url,
-                    source: item.source || 'MediaStack',
-                    publishedAt: item.published_at,
-                    location: location
-                })));
-            }
-        } catch (err) {
-            console.log('MediaStack API failed:', err.message);
-        }
+        // Extract articles
+        const items = parsed.rss.channel[0].item || [];
+        const articles = [];
 
-        // Try Currents API
-        try {
-            const currentsResponse = await axios.get(`https://api.currentsapi.services/v1/search?apiKey=${NEWS_API_KEYS.currents}&keywords=${encodeURIComponent(location)}&language=en`);
-            if (currentsResponse.data && currentsResponse.data.news) {
-                articles = articles.concat(currentsResponse.data.news.map(item => ({
-                    title: item.title,
-                    content: item.description || '',
-                    url: item.url,
-                    source: item.source || 'Currents API',
-                    publishedAt: item.published,
-                    location: location
-                })));
-            }
-        } catch (err) {
-            console.log('Currents API failed:', err.message);
-        }
-
-        // Try Newscatcher API
-        try {
-            const newscatcherResponse = await axios.get(`https://api.newscatcherapi.com/v2/search?q=${encodeURIComponent(location)}&lang=en&country=in&page_size=10`, {
-                headers: { 'x-api-key': NEWS_API_KEYS.newscatcher }
+        items.slice(0, 30).forEach(item => {
+            articles.push({
+                title: item.title[0],
+                url: item.link[0],
+                source: 'Google News',
+                publishedAt: item.pubDate[0],
+                description: item.description ? item.description[0] : '',
+                content: '',
+                author: '',
+                location: location
             });
-            if (newscatcherResponse.data && newscatcherResponse.data.articles) {
-                articles = articles.concat(newscatcherResponse.data.articles.map(item => ({
-                    title: item.title,
-                    content: item.summary || '',
-                    url: item.link,
-                    source: item.source || 'Newscatcher',
-                    publishedAt: item.published_date,
-                    location: location
-                })));
-            }
-        } catch (err) {
-            console.log('Newscatcher API failed:', err.message);
-        }
-
-        // Try Bing News Search API
-        try {
-            const bingResponse = await axios.get(`https://api.bing.microsoft.com/v7.0/news/search?q=${encodeURIComponent(location)}&mkt=en-IN&mfg=1&freshness=Week`, {
-                headers: { 'Ocp-Apim-Subscription-Key': NEWS_API_KEYS.bing }
-            });
-            if (bingResponse.data && bingResponse.data.value) {
-                articles = articles.concat(bingResponse.data.value.map(item => ({
-                    title: item.name,
-                    content: item.description || '',
-                    url: item.url,
-                    source: item.provider?.[0]?.name || 'Bing News',
-                    publishedAt: item.datePublished,
-                    location: location
-                })));
-            }
-        } catch (err) {
-            console.log('Bing News API failed:', err.message);
-        }
-
-        // Try ContextualWeb API
-        try {
-            const contextualWebResponse = await axios.post(`https://api.contextualwebsearch.com/v1/news/searchAPI?apiKey=${NEWS_API_KEYS.contextualweb}&q=${encodeURIComponent(location)}&pageNumber=1&pageSize=10&autocorrect=true&safeSearch=false`);
-            if (contextualWebResponse.data && contextualWebResponse.data.value) {
-                articles = articles.concat(contextualWebResponse.data.value.map(item => ({
-                    title: item.title,
-                    content: item.body || '',
-                    url: item.url,
-                    source: item.provider?.name || 'ContextualWeb',
-                    publishedAt: item.datePublished,
-                    location: location
-                })));
-            }
-        } catch (err) {
-            console.log('ContextualWeb API failed:', err.message);
-        }
-
-        // Try Apify News API
-        try {
-            const apifyResponse = await axios.get(`https://api.apify.com/v2/acts/apify~news-crawler/runs?token=${NEWS_API_KEYS.apify}&country=IN&q=${encodeURIComponent(location)}`);
-            if (apifyResponse.data && apifyResponse.data.data && apifyResponse.data.data.items) {
-                articles = articles.concat(apifyResponse.data.data.items.map(item => ({
-                    title: item.title,
-                    content: item.description || '',
-                    url: item.url,
-                    source: item.domain || 'Apify News',
-                    publishedAt: item.publishedAt,
-                    location: location
-                })));
-            }
-        } catch (err) {
-            console.log('Apify News API failed:', err.message);
-        }
-
-        // Try EventRegistry API
-        try {
-            const eventRegistryResponse = await axios.get(`https://eventregistry.org/api/v1/article/getArticles?apiKey=${NEWS_API_KEYS.eventregistry}&action=getArticles&q=${encodeURIComponent(location)}&country=India&resultType=articles&articlesSortBy=date&articlesCount=10`);
-            if (eventRegistryResponse.data && eventRegistryResponse.data.articles) {
-                articles = articles.concat(Object.values(eventRegistryResponse.data.articles).map(item => ({
-                    title: item.title,
-                    content: item.body || '',
-                    url: item.url,
-                    source: item.source?.title || 'EventRegistry',
-                    publishedAt: item.datetimePub,
-                    location: location
-                })));
-            }
-        } catch (err) {
-            console.log('EventRegistry API failed:', err.message);
-        }
-
-        // If all APIs fail, return an error
-        if (articles.length === 0) {
-            return res.status(500).json({ error: 'No news articles could be retrieved for the specified location' });
-        }
+        });
 
         res.json(articles);
     } catch (error) {

@@ -120,11 +120,25 @@ class CityEmotionalMapSystem {
             const newsData = await this.newsCrawler.crawlNewsForLocation(location);
             console.log(`Retrieved ${newsData.length} news articles`);
 
-            // Perform emotional analysis using Mistral (image/audio data will use default analysis as Mistral doesn't support direct image/audio processing)
-            const emotionalAnalysis = await this.mistralAnalyzer.analyzeLocationEmotions(
-                location,
-                newsData
-            );
+            // Perform emotional analysis using server-side API
+            const emotionalAnalysisResponse = await fetch('/api/emotional-analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    location: location,
+                    latitude: 0,
+                    longitude: 0,
+                    newsArticles: newsData
+                })
+            });
+
+            if (!emotionalAnalysisResponse.ok) {
+                throw new Error(`Emotional analysis failed with status ${emotionalAnalysisResponse.status}`);
+            }
+
+            const emotionalAnalysis = await emotionalAnalysisResponse.json();
 
             console.log('Emotional analysis completed:', emotionalAnalysis);
 
@@ -190,11 +204,25 @@ class CityEmotionalMapSystem {
             // Crawl news for the location
             const newsData = await this.newsCrawler.crawlNewsForLocation(location);
 
-            // Perform emotional analysis (image/audio data will use default analysis as Mistral doesn't support direct image/audio processing)
-            const emotionalAnalysis = await this.mistralAnalyzer.analyzeLocationEmotions(
-                location,
-                newsData
-            );
+            // Perform emotional analysis using server-side API
+            const emotionalAnalysisResponse = await fetch('/api/emotional-analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    location: location,
+                    latitude: 0,
+                    longitude: 0,
+                    newsArticles: newsData
+                })
+            });
+
+            if (!emotionalAnalysisResponse.ok) {
+                throw new Error(`Emotional analysis failed with status ${emotionalAnalysisResponse.status}`);
+            }
+
+            const emotionalAnalysis = await emotionalAnalysisResponse.json();
 
             // Update visualization
             this.visualizer.updateChartData(emotionalAnalysis);
