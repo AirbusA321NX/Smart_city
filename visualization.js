@@ -16,11 +16,18 @@ class EmotionalMapVisualizer {
 
     // Create emotion distribution pie chart
     createEmotionPieChart() {
-        const ctx = document.getElementById('emotion-pie-chart').getContext('2d');
+        const canvas = document.getElementById('emotion-pie-chart');
+        if (!canvas) {
+            console.warn('Emotion pie chart canvas not found');
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
 
         // Destroy existing chart if it exists
         if (this.charts.emotionPie) {
             this.charts.emotionPie.destroy();
+            this.charts.emotionPie = null;
         }
 
         this.charts.emotionPie = new Chart(ctx, {
@@ -91,11 +98,18 @@ class EmotionalMapVisualizer {
 
     // Create crime statistics bar chart
     createCrimeBarChart() {
-        const ctx = document.getElementById('crime-bar-chart').getContext('2d');
+        const canvas = document.getElementById('crime-bar-chart');
+        if (!canvas) {
+            console.warn('Crime bar chart canvas not found');
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
 
         // Destroy existing chart if it exists
         if (this.charts.crimeBar) {
             this.charts.crimeBar.destroy();
+            this.charts.crimeBar = null;
         }
 
         this.charts.crimeBar = new Chart(ctx, {

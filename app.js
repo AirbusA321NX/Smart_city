@@ -88,6 +88,9 @@ async function loadIndiaMapBoundaries() {
                             handleSearch();
                         });
                     }
+                } else if (response.status === 401) {
+                    console.warn('API authentication failed for boundaries. Please check GEOAPIFY_API_KEY');
+                    break; // Stop trying if auth fails
                 }
             } catch (error) {
                 console.warn(`Could not load boundary for state: ${state}`, error);
@@ -132,9 +135,20 @@ function handleSearchInput(event) {
     const dropdown = document.getElementById('location-dropdown');
 
     if (query.length > 2) {
+        const apiKey = window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY';
+        
         // Use Geoapify Autocomplete API for suggestions
-        fetch(`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=in&apiKey=${window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY'}`)
-            .then(response => response.json())
+        fetch(`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=in&apiKey=${apiKey}`)
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        console.error('Geoapify API key is invalid or expired. Please update GEOAPIFY_API_KEY in .env file');
+                        throw new Error('API authentication failed');
+                    }
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data && data.results) {
                     const suggestions = data.results.map(result => {
@@ -152,6 +166,8 @@ function handleSearchInput(event) {
             .catch(error => {
                 console.error('Error fetching Geoapify suggestions:', error);
                 dropdown.classList.add('hidden');
+                // Show fallback suggestions for common Indian cities
+                showFallbackSuggestions(query);
             });
     } else {
         dropdown.classList.add('hidden');
@@ -214,9 +230,20 @@ function handleSearch() {
 
 // Geocode location and update map
 function geocodeLocation(location) {
+    const apiKey = window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY';
+    
     // Use Geoapify Forward Geocoding API
-    fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(location)}&format=json&apiKey=${window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY'}`)
-        .then(response => response.json())
+    fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(location)}&format=json&apiKey=${apiKey}`)
+        .then(response => {
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.error('Geoapify API key is invalid or expired. Please update GEOAPIFY_API_KEY in .env file');
+                    throw new Error('API authentication failed - using fallback coordinates');
+                }
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data && data.results && data.results.length > 0) {
                 const result = data.results[0];
@@ -235,15 +262,72 @@ function geocodeLocation(location) {
                 // Fetch data for location
                 fetchDataForLocation(location, lat, lon);
             } else {
-                alert('Location not found');
-                showLoading(false);
+                throw new Error('Location not found');
             }
         })
         .catch(error => {
             console.error('Error geocoding location:', error);
-            alert('Error geocoding location');
-            showLoading(false);
+            // Try fallback coordinates for common Indian cities
+            const fallbackCoords = getFallbackCoordinates(location);
+            if (fallbackCoords) {
+                console.log('Using fallback coordinates for', location);
+                window.currentLocation = location;
+                map.setView([fallbackCoords.lat, fallbackCoords.lon], 12);
+                addMarker(fallbackCoords.lat, fallbackCoords.lon, location);
+                fetchDataForLocation(location, fallbackCoords.lat, fallbackCoords.lon);
+            } else {
+                alert('Location not found. Please try another location or update your GEOAPIFY_API_KEY.');
+                showLoading(false);
+            }
         });
+}
+
+// Get fallback coordinates for common Indian cities
+function getFallbackCoordinates(location) {
+    const locationLower = location.toLowerCase().trim();
+    const fallbackCities = {
+        'delhi': { lat: 28.6139, lon: 77.2090 },
+        'mumbai': { lat: 19.0760, lon: 72.8777 },
+        'bangalore': { lat: 12.9716, lon: 77.5946 },
+        'bengaluru': { lat: 12.9716, lon: 77.5946 },
+        'kolkata': { lat: 22.5726, lon: 88.3639 },
+        'chennai': { lat: 13.0827, lon: 80.2707 },
+        'hyderabad': { lat: 17.3850, lon: 78.4867 },
+        'pune': { lat: 18.5204, lon: 73.8567 },
+        'ahmedabad': { lat: 23.0225, lon: 72.5714 },
+        'jaipur': { lat: 26.9124, lon: 75.7873 },
+        'chandigarh': { lat: 30.7333, lon: 76.7794 },
+        'lucknow': { lat: 26.8467, lon: 80.9462 },
+        'kanpur': { lat: 26.4499, lon: 80.3319 },
+        'nagpur': { lat: 21.1458, lon: 79.0882 },
+        'indore': { lat: 22.7196, lon: 75.8577 },
+        'thane': { lat: 19.2183, lon: 72.9781 },
+        'bhopal': { lat: 23.2599, lon: 77.4126 },
+        'visakhapatnam': { lat: 17.6868, lon: 83.2185 },
+        'pimpri-chinchwad': { lat: 18.6298, lon: 73.7997 },
+        'patna': { lat: 25.5941, lon: 85.1376 }
+    };
+    
+    return fallbackCities[locationLower] || null;
+}
+
+// Show fallback suggestions for common Indian cities
+function showFallbackSuggestions(query) {
+    const queryLower = query.toLowerCase();
+    const commonCities = [
+        'Delhi', 'Mumbai', 'Bangalore', 'Kolkata', 'Chennai',
+        'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Chandigarh',
+        'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane',
+        'Bhopal', 'Visakhapatnam', 'Patna'
+    ];
+    
+    const matches = commonCities.filter(city => 
+        city.toLowerCase().includes(queryLower)
+    );
+    
+    if (matches.length > 0) {
+        showSuggestions(matches);
+    }
 }
 
 // Geocode location using coordinates
@@ -342,10 +426,29 @@ async function updateUIWithData(data) {
     updateSafetyIndex(data.safetyIndex);
 
     // Update emotion pie chart
-    updateEmotionChart(data.emotions);
+    updateEmotionChart(data.emotions || data.aggregatedEmotions);
 
     // Update crime bar chart
-    updateCrimeChart(data.crimes);
+    updateCrimeChart(data.crimes || data.crimeStats);
+
+    // Update crime timeline if available
+    if (data.crimeTimeline && typeof updateCrimeTimeline === 'function') {
+        updateCrimeTimeline(data.crimeTimeline);
+    } else if (data.monthlyTrends && data.monthlyTrends.length > 0) {
+        // Fallback: create timeline from monthly trends
+        const timelineData = {
+            monthlyData: data.monthlyTrends,
+            currentMonth: data.currentPeriod || {},
+            overallTrend: {
+                direction: 'stable',
+                percentageChange: 0,
+                mostCommonCrime: 'theft',
+                leastCommonCrime: 'vandalism'
+            },
+            recommendations: []
+        };
+        updateCrimeTimeline(timelineData);
+    }
 
     // Update news feed
     updateNewsFeed(data.news);
@@ -412,11 +515,18 @@ function updateSafetyIndex(score) {
 
 // Update emotion pie chart
 function updateEmotionChart(emotions) {
-    const ctx = document.getElementById('emotion-pie-chart').getContext('2d');
+    const canvas = document.getElementById('emotion-pie-chart');
+    if (!canvas) {
+        console.warn('Emotion pie chart canvas not found');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
 
     // Destroy existing chart if it exists
     if (emotionPieChart) {
         emotionPieChart.destroy();
+        emotionPieChart = null;
     }
 
     emotionPieChart = new Chart(ctx, {
@@ -460,11 +570,18 @@ function updateEmotionChart(emotions) {
 
 // Update crime bar chart
 function updateCrimeChart(crimes) {
-    const ctx = document.getElementById('crime-bar-chart').getContext('2d');
+    const canvas = document.getElementById('crime-bar-chart');
+    if (!canvas) {
+        console.warn('Crime bar chart canvas not found');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
 
     // Destroy existing chart if it exists
     if (crimeBarChart) {
         crimeBarChart.destroy();
+        crimeBarChart = null;
     }
 
     // Extract crime types and counts from the crimes object
