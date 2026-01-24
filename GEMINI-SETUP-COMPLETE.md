@@ -2,8 +2,7 @@
 
 ## 🎉 What's Been Done
 
-### 1. **API Key Added**
-- ✅ Gemini API Key: `AIzaSyDLg3Qe08ckb7rE12lcaSDbEfFXkeZWz4Y`
+### 1. **API Key Added*
 - ✅ Added to `.env` file
 - ✅ Configured in `gemini-integration.js`
 
