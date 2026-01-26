@@ -59,10 +59,78 @@ const mockNewsSources = [
 
 // API Routes
 
+// Location verification endpoint
+app.post('/api/verify-location', async (req, res) => {
+    try {
+        const { location } = req.body;
+
+        if (!location || location.trim().length === 0) {
+            return res.status(400).json({
+                valid: false,
+                error: 'Location name is required'
+            });
+        }
+
+        console.log(`\n🔍 Verifying location: "${location}"`);
+
+        // Use AI Manager to verify location with Gemini
+        const verificationResult = await aiManager.verifyLocation(location);
+
+        // Enhanced logging for verification results
+        if (verificationResult.valid) {
+            const typeLabel = verificationResult.locationType.toUpperCase();
+            console.log(`✓ LOCATION VERIFIED`);
+            console.log(`  Type: ${typeLabel}`);
+            console.log(`  Name: ${verificationResult.locationName}`);
+            if (verificationResult.state) {
+                console.log(`  State: ${verificationResult.state}`);
+            }
+            if (verificationResult.district) {
+                console.log(`  District: ${verificationResult.district}`);
+            }
+            console.log(`  Confidence: ${verificationResult.confidence}%`);
+            if (verificationResult.coordinates) {
+                console.log(`  Coordinates: ${verificationResult.coordinates.lat}, ${verificationResult.coordinates.lon}`);
+            }
+        } else {
+            console.log(`✗ LOCATION NOT VERIFIED`);
+            console.log(`  Reason: ${verificationResult.note || 'Unknown'}`);
+        }
+
+        // Send back the verification result
+        res.json(verificationResult);
+
+    } catch (error) {
+        console.error('Error in location verification:', error);
+
+        // Return a default invalid response
+        res.json({
+            valid: false,
+            locationType: 'invalid',
+            locationName: req.body.location,
+            confidence: 0,
+            note: 'Error verifying location: ' + error.message
+        });
+    }
+});
+
 // Emotional analysis endpoint
 app.post('/api/emotional-analysis', async (req, res) => {
     try {
-        const { location, latitude, longitude } = req.body;
+        const { location, latitude, longitude, locationType, state, district, verificationData } = req.body;
+
+        // Log location type information for context-aware analysis
+        const typeLabel = (locationType || 'city').toUpperCase();
+        console.log(`\n📊 EMOTIONAL ANALYSIS STARTED`);
+        console.log(`  Location: ${location}`);
+        console.log(`  Type: ${typeLabel}`);
+        if (state) {
+            console.log(`  State: ${state}`);
+        }
+        if (district) {
+            console.log(`  District: ${district}`);
+        }
+        console.log(`  Coordinates: ${latitude}, ${longitude}`);
 
         // Scrape news from multiple sources
         console.log(`\n📰 Fetching news for ${location} via web scraping...`);
@@ -83,13 +151,22 @@ app.post('/api/emotional-analysis', async (req, res) => {
         // Use AI API Manager with automatic fallback
         console.log(`Analyzing ${location} with AI (Gemini primary, Mistral fallback, Simple Analyzer last resort)...`);
         const [geminiAnalysis, crimeTimeline] = await Promise.all([
-            aiManager.analyzeTextSentiment(newsContent, location, { includeTimeline: true, articles: newsArticles }),
+            aiManager.analyzeTextSentiment(newsContent, location, { 
+                includeTimeline: true, 
+                articles: newsArticles,
+                locationType: locationType,
+                state: state,
+                district: district
+            }),
             aiManager.getCrimeTimeline(location, newsArticles, 1)
         ]);
 
-        // Construct emotionalData
+        // Construct emotionalData with location type information
         const emotionalData = {
             location: location,
+            locationType: locationType,
+            state: state,
+            district: district,
             safetyIndex: geminiAnalysis.safetyIndex || 50,
             aggregatedEmotions: geminiAnalysis.aggregatedEmotions || {
                 calm: 20,
@@ -122,7 +199,11 @@ app.post('/api/emotional-analysis', async (req, res) => {
             timestamp: new Date().toISOString()
         };
 
-        console.log(`✓ Analysis complete for ${location}. Safety Index: ${emotionalData.safetyIndex}, API: ${emotionalData.apiUsed}`);
+        console.log(`\n✓ ANALYSIS COMPLETE`);
+        console.log(`  Location: ${location} (${typeLabel})`);
+        console.log(`  Safety Index: ${emotionalData.safetyIndex}`);
+        console.log(`  API Used: ${emotionalData.apiUsed}`);
+        console.log(`  Emotions: Calm=${emotionalData.aggregatedEmotions.calm}% Angry=${emotionalData.aggregatedEmotions.angry}% Fear=${emotionalData.aggregatedEmotions.fear}%`);
         res.json(emotionalData);
     } catch (error) {
         console.error('Error in emotional analysis:', error);
@@ -130,6 +211,9 @@ app.post('/api/emotional-analysis', async (req, res) => {
         // Return fallback data instead of error
         res.json({
             location: req.body.location,
+            locationType: req.body.locationType || 'unknown',
+            state: req.body.state || null,
+            district: req.body.district || null,
             safetyIndex: 50,
             aggregatedEmotions: {
                 calm: 20,

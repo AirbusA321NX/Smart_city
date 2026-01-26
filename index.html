@@ -1,113 +1,127 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>City Emotional Map - Real-Time Mood Detection</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css" />
     <!-- Load Leaflet CSS and JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <!-- Load Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <!-- Load Leaflet Heat plugin -->
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="container">
-        <!-- Header Section -->
-        <header class="header">
-            <h1>City Emotional Map</h1>
-            <p>Real-Time Mood Detection & Analysis</p>
-        </header>
+      <!-- Header Section -->
+      <header class="header">
+        <h1>City Emotional Map</h1>
+        <p>Real-Time Mood Detection & Analysis</p>
+      </header>
 
-        <!-- Search Section -->
-        <div class="search-section">
-            <div class="search-container">
-                <input type="text" id="location-search" placeholder="Enter location in India..." autocomplete="off">
-                <div id="location-dropdown" class="dropdown hidden">
-                    <!-- Auto-fill suggestions will appear here -->
-                </div>
-                <button id="search-btn" class="search-button">
-                    <span class="loading-spinner hidden"></span>
-                    <span class="button-text">Search</span>
-                </button>
+      <!-- Search Section -->
+      <div class="search-section">
+        <div class="search-container">
+          <input
+            type="text"
+            id="location-search"
+            placeholder="Enter location in India..."
+            autocomplete="off"
+          />
+          <div id="location-dropdown" class="dropdown hidden">
+            <!-- Auto-fill suggestions will appear here -->
+          </div>
+          <button id="search-btn" class="search-button">
+            <span class="loading-spinner hidden"></span>
+            <span class="button-text">Search</span>
+          </button>
+        </div>
+        <!-- Location Verification Badge -->
+        <div id="location-verification-badge" class="verification-badge hidden">
+          <span id="verification-icon"></span>
+          <span id="verification-text"></span>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div class="main-content">
+        <!-- Map Container -->
+        <div class="map-container">
+          <div id="map" style="height: 100%; width: 100%"></div>
+          <div id="map-overlay" class="map-overlay">
+            <div class="emotional-zones">
+              <div class="zone calm-zone">Calm Zone</div>
+              <div class="zone angry-zone">Angry Zone</div>
+              <div class="zone depressed-zone">Depressed Zone</div>
+              <div class="zone fear-zone">Fear Zone</div>
             </div>
+          </div>
         </div>
 
-        <!-- Main Content Area -->
-        <div class="main-content">
-            <!-- Map Container -->
-            <div class="map-container">
-                <div id="map" style="height: 100%; width: 100%;"></div>
-                <div id="map-overlay" class="map-overlay">
-                    <div class="emotional-zones">
-                        <div class="zone calm-zone">Calm Zone</div>
-                        <div class="zone angry-zone">Angry Zone</div>
-                        <div class="zone depressed-zone">Depressed Zone</div>
-                        <div class="zone fear-zone">Fear Zone</div>
-                    </div>
-                </div>
+        <!-- Data Visualization Panel -->
+        <div class="data-panel">
+          <div class="panel-header">
+            <h2>Live Emotional Statistics</h2>
+            <div class="powered-by-google">
+              <img
+                src="gemini+cloud.png"
+                alt="Powered by Mistral AI"
+                style="height: 40px"
+              />
             </div>
+          </div>
 
-            <!-- Data Visualization Panel -->
-            <div class="data-panel">
-                <div class="panel-header">
-                    <h2>Live Emotional Statistics</h2>
-                    <div class="powered-by-google">
-                        <img src="gemini+cloud.png" alt="Powered by Mistral AI" style="height: 40px;">
-                    </div>
-                </div>
-
-                <!-- Safety Index -->
-                <div class="safety-index">
-                    <h3>Safety Index</h3>
-                    <div class="safety-score">Calculating...</div>
-                    <div class="safety-bar">
-                        <div class="safety-fill" style="width: 0%"></div>
-                    </div>
-                </div>
-
-                <!-- Emotion Distribution Pie Chart -->
-                <div class="chart-container">
-                    <h3>Emotion Distribution</h3>
-                    <canvas id="emotion-pie-chart"></canvas>
-                </div>
-
-                <!-- Crime Statistics Bar Chart -->
-                <div class="chart-container">
-                    <h3>Crime Statistics</h3>
-                    <canvas id="crime-bar-chart"></canvas>
-                </div>
-
-                <!-- Crime Timeline Section -->
-                <div class="chart-container">
-                    <h3>Crime Report (This Month)</h3>
-                    <canvas id="crime-timeline-chart" style="display: none;"></canvas>
-                    <div id="current-period-info" class="period-info">
-                        <!-- Current period info will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Live Feed Section -->
-                <div class="live-feed">
-                    <h3>Live News Feed</h3>
-                    <div id="news-feed" class="news-container">
-                        <!-- News items will be loaded here -->
-                    </div>
-                </div>
+          <!-- Safety Index -->
+          <div class="safety-index">
+            <h3>Safety Index</h3>
+            <div class="safety-score">Calculating...</div>
+            <div class="safety-bar">
+              <div class="safety-fill" style="width: 0%"></div>
             </div>
+          </div>
+
+          <!-- Emotion Distribution Pie Chart -->
+          <div class="chart-container">
+            <h3>Emotion Distribution</h3>
+            <canvas id="emotion-pie-chart"></canvas>
+          </div>
+
+          <!-- Crime Statistics Bar Chart -->
+          <div class="chart-container">
+            <h3>Crime Statistics</h3>
+            <canvas id="crime-bar-chart"></canvas>
+          </div>
+
+          <!-- Crime Timeline Section -->
+          <div class="chart-container">
+            <h3>Crime Report (This Month)</h3>
+            <canvas id="crime-timeline-chart" style="display: none"></canvas>
+            <div id="current-period-info" class="period-info">
+              <!-- Current period info will be loaded here -->
+            </div>
+          </div>
+
+          <!-- Live Feed Section -->
+          <div class="live-feed">
+            <h3>Live News Feed</h3>
+            <div id="news-feed" class="news-container">
+              <!-- News items will be loaded here -->
+            </div>
+          </div>
         </div>
+      </div>
 
-        <!-- Loading Overlay -->
-        <div id="loading-overlay" class="loading-overlay hidden">
-            <div class="loading-content">
-                <div class="spinner"></div>
-                <p>Analyzing emotions and safety metrics...</p>
-            </div>
+      <!-- Loading Overlay -->
+      <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-content">
+          <div class="spinner"></div>
+          <p>Analyzing emotions and safety metrics...</p>
+          <p class="loading-status"></p>
         </div>
+      </div>
     </div>
 
     <script src="api-config.js"></script>
@@ -118,6 +132,5 @@
     <script src="crime-timeline.js"></script>
     <script src="data-integration.js"></script>
     <script src="main-integration.js"></script>
-</body>
-
+  </body>
 </html>

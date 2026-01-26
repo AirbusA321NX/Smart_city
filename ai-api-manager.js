@@ -399,6 +399,33 @@ Provide a detailed monthly breakdown in JSON format:
     }
 
     /**
+     * Verify location hierarchy using Gemini
+     */
+    async verifyLocation(locationName) {
+        try {
+            console.log(`Verifying location "${locationName}" with Gemini...`);
+            
+            // Call Gemini to verify location
+            const result = await this.gemini.verifyLocationHierarchy(locationName);
+            
+            console.log(`✓ Location verification successful for "${locationName}"`);
+            return result;
+            
+        } catch (error) {
+            console.warn('Location verification with Gemini failed:', error.message);
+            
+            // Return a default invalid response on error
+            return {
+                valid: false,
+                locationType: 'invalid',
+                locationName: locationName,
+                confidence: 0,
+                note: 'Error verifying location'
+            };
+        }
+    }
+
+    /**
      * Get API status report
      */
     getStatus() {

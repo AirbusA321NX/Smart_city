@@ -223,13 +223,169 @@ function handleSearch() {
     const location = document.getElementById('location-search').value.trim();
 
     if (location) {
+        // Clear previous verification badge
+        hideVerificationBadge();
         showLoading(true);
-        geocodeLocation(location);
+        verifyAndGeocode(location);
     }
 }
 
+// Verify location with Gemini, then geocode
+async function verifyAndGeocode(location) {
+    try {
+        // Show verification status
+        updateLoadingStatus('Verifying location...');
+
+        // Call backend to verify location with Gemini
+        const verificationResponse = await fetch('/api/verify-location', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                location: location
+            })
+        });
+
+        if (!verificationResponse.ok) {
+            throw new Error(`Verification failed with status ${verificationResponse.status}`);
+        }
+
+        const verificationData = await verificationResponse.json();
+
+        // Check if location is valid
+        if (!verificationData.valid) {
+            showLoading(false);
+            showNotification(`"${location}" could not be verified. Please check the spelling or try another location.`, 'error');
+            return;
+        }
+
+        // Show verification result
+        const typeLabel = verificationData.locationType.replace('-', ' ').toUpperCase();
+        console.log(`✓ Verified: ${verificationData.locationName} is a ${typeLabel}`);
+        
+        // Show verification badge
+        showVerificationBadge(verificationData);
+        
+        // Store verification data for later use
+        window.currentLocationData = verificationData;
+
+        // Update loading status
+        updateLoadingStatus('Geocoding location...');
+
+        // Proceed with geocoding using verified location name
+        geocodeLocation(verificationData.locationName || location, verificationData);
+
+    } catch (error) {
+        console.error('Error verifying location:', error);
+        showLoading(false);
+        showNotification('Error verifying location. Please try again.', 'error');
+    }
+}
+
+// Show verification badge with location info
+function showVerificationBadge(verificationData) {
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+        const badge = document.getElementById('location-verification-badge');
+        const icon = document.getElementById('verification-icon');
+        const text = document.getElementById('verification-text');
+        
+        console.log('=== VERIFICATION BADGE ===');
+        console.log('showVerificationBadge called');
+        console.log('Badge element found:', !!badge);
+        console.log('Icon element found:', !!icon);
+        console.log('Text element found:', !!text);
+        
+        if (!badge || !icon || !text) {
+            console.error('One or more badge elements not found in DOM');
+            return;
+        }
+        
+        // Get location type label
+        const typeLabel = verificationData.locationType.replace('-', ' ');
+        const typeDisplay = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
+        
+        // Build hierarchy display
+        const hierarchyParts = [];
+        if (verificationData.state) {
+            hierarchyParts.push(verificationData.state);
+        }
+        if (verificationData.district && verificationData.locationType !== 'district') {
+            hierarchyParts.push(verificationData.district);
+        }
+        hierarchyParts.push(verificationData.locationName);
+        const hierarchyDisplay = hierarchyParts.join(' → ');
+        
+        // Update badge content
+        icon.textContent = '✓';
+        text.textContent = `${hierarchyDisplay} (${typeDisplay})`;
+        
+        // Set badge color based on confidence
+        let bgColor = '#2ecc71';
+        let textColor = '#fff';
+        if (verificationData.confidence >= 80) {
+            bgColor = '#2ecc71';
+            textColor = '#fff';
+        } else if (verificationData.confidence >= 60) {
+            bgColor = '#f1c40f';
+            textColor = '#000';
+        } else {
+            bgColor = '#e74c3c';
+            textColor = '#fff';
+        }
+        
+        // Remove hidden class first
+        badge.classList.remove('hidden');
+        console.log('Classes after remove hidden:', badge.className);
+        
+        // Set ALL necessary inline styles with !important to override CSS
+        badge.setAttribute('style', `
+            background-color: ${bgColor} !important;
+            color: ${textColor} !important;
+            padding: 10px 16px !important;
+            border-radius: 6px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            width: fit-content !important;
+            margin: 12px auto 0 !important;
+            box-shadow: 0 2px 10px rgba(46, 204, 113, 0.3) !important;
+            animation: slideInUp 0.4s ease-out !important;
+            transition: all 0.3s ease !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        `);
+        
+        // Log for debugging
+        console.log(`✓ Badge displayed: ${typeDisplay} - ${verificationData.locationName}`);
+        console.log(`  Confidence: ${verificationData.confidence}%`);
+        console.log(`  Hierarchy: ${hierarchyDisplay}`);
+        console.log(`  Display style: ${badge.style.display}`);
+        console.log(`  Background color: ${bgColor}`);
+        console.log(`  Classes: ${badge.className}`);
+        console.log(`  Computed display: ${window.getComputedStyle(badge).display}`);
+        console.log('=========================');
+    }, 150);
+}
+
+// Hide verification badge
+function hideVerificationBadge() {
+    setTimeout(() => {
+        const badge = document.getElementById('location-verification-badge');
+        if (badge) {
+            badge.classList.add('hidden');
+            badge.style.display = 'none';
+            badge.style.marginTop = '0';
+            console.log('Badge hidden');
+        }
+    }, 50);
+}
+
 // Geocode location and update map
-function geocodeLocation(location) {
+function geocodeLocation(location, verificationData) {
     const apiKey = window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY';
     
     // Use Geoapify Forward Geocoding API
@@ -332,6 +488,9 @@ function showFallbackSuggestions(query) {
 
 // Geocode location using coordinates
 function geocodeLocationByCoordinates(lat, lon, locationName) {
+    // Clear previous verification badge since this is direct coordinate access
+    hideVerificationBadge();
+    
     // Store current location for heatmap
     window.currentLocation = locationName;
 
@@ -381,6 +540,11 @@ function fetchDataForLocation(location, lat, lng) {
 // Fetch emotional data from backend API
 async function fetchEmotionalData(location, lat, lng) {
     try {
+        // Get location type from stored verification data
+        const locationType = window.currentLocationData?.locationType || 'city';
+        const state = window.currentLocationData?.state || null;
+        const district = window.currentLocationData?.district || null;
+        
         // Call the backend API to get emotional analysis
         const response = await fetch('/api/emotional-analysis', {
             method: 'POST',
@@ -390,7 +554,11 @@ async function fetchEmotionalData(location, lat, lng) {
             body: JSON.stringify({
                 location: location,
                 latitude: lat,
-                longitude: lng
+                longitude: lng,
+                locationType: locationType,
+                state: state,
+                district: district,
+                verificationData: window.currentLocationData
             })
         });
 
@@ -671,6 +839,15 @@ function showLoading(show) {
     } else {
         overlay.classList.add('hidden');
     }
+}
+
+// Update loading status message
+function updateLoadingStatus(message) {
+    const statusElement = document.querySelector('.loading-status');
+    if (statusElement) {
+        statusElement.textContent = message;
+    }
+    console.log(`Loading: ${message}`);
 }
 
 // Initialize with empty data

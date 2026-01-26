@@ -454,6 +454,85 @@ Respond in JSON format:
     }
 
     /**
+     * Verify and classify location using Gemini
+     * Determines if location is a state, city, neighborhood, or invalid
+     * @param {string} locationName - Location to verify
+     * @returns {Promise<Object>} - Location verification result
+     */
+    async verifyLocationHierarchy(locationName) {
+        try {
+            const prompt = `Classify and verify the following location: "${locationName}"
+
+Your task:
+1. Determine if this is a valid location in India
+2. Classify it as: state, union-territory, city, district, or neighborhood
+3. Return its hierarchical information
+
+Respond ONLY in valid JSON format (no markdown, no backticks):
+{
+  "valid": true/false,
+  "locationType": "state|union-territory|city|district|neighborhood|invalid",
+  "locationName": "verified exact name",
+  "state": "parent state name if applicable",
+  "district": "district name if applicable",
+  "coordinates": {
+    "lat": approximate latitude,
+    "lon": approximate longitude
+  },
+  "description": "brief description of the location",
+  "confidence": 0-100,
+  "note": "any clarification or ambiguity note"
+}
+
+Important: Return ONLY JSON, no additional text.`;
+
+            const response = await this.makeRequest(
+                `${this.baseUrl}/${this.model}:generateContent?key=${this.apiKey}`,
+                {
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.2,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 512,
+                    }
+                }
+            );
+
+            const result = response.data.candidates[0].content.parts[0].text;
+            
+            // Extract JSON from response - handle both markdown and plain JSON
+            let jsonData = null;
+            
+            // Try to extract from markdown code block first
+            const jsonMatch = result.match(/```(?:json)?\n([\s\S]*?)\n```/);
+            if (jsonMatch) {
+                jsonData = JSON.parse(jsonMatch[1]);
+            } else {
+                // Try to parse as plain JSON
+                const cleanedResult = result.trim();
+                jsonData = JSON.parse(cleanedResult);
+            }
+
+            return jsonData;
+        } catch (error) {
+            console.error('Error verifying location with Gemini:', error.message);
+            // Return a default invalid response instead of throwing
+            return {
+                valid: false,
+                locationType: 'invalid',
+                locationName: locationName,
+                confidence: 0,
+                note: 'Error verifying location'
+            };
+        }
+    }
+
+    /**
      * Get default analysis structure
      */
     getDefaultAnalysis() {
