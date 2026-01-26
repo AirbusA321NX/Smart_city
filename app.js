@@ -1768,6 +1768,27 @@ function getPredictiveInsights(emotionalData) {
 function analyzeEmotionalTrends(historicalData) {
     const trends = [];
 
+    // Check if historicalData is valid and has the expected structure
+    if (!historicalData || typeof historicalData !== 'object') {
+        return trends;
+    }
+
+    // If historicalData is an object with dates and safetyTrend arrays
+    if (historicalData.dates && Array.isArray(historicalData.dates)) {
+        // historicalData is an object, not an array - return empty trends
+        return trends;
+    }
+
+    // If historicalData is an array
+    if (!Array.isArray(historicalData)) {
+        return trends;
+    }
+
+    // Need at least 4 data points to analyze trends
+    if (historicalData.length < 4) {
+        return trends;
+    }
+
     // Compare recent data with past averages
     const recentAvg = historicalData.slice(-3); // Last 3 data points
     const pastAvg = historicalData.slice(0, -3); // Previous data points
@@ -1776,8 +1797,8 @@ function analyzeEmotionalTrends(historicalData) {
     const emotions = ['angry', 'fear', 'depressed', 'calm', 'happy'];
 
     emotions.forEach(emotion => {
-        const recentValues = recentAvg.map(d => d.emotions[emotion]).filter(v => v !== undefined);
-        const pastValues = pastAvg.map(d => d.emotions[emotion]).filter(v => v !== undefined);
+        const recentValues = recentAvg.map(d => d.emotions?.[emotion]).filter(v => v !== undefined);
+        const pastValues = pastAvg.map(d => d.emotions?.[emotion]).filter(v => v !== undefined);
 
         if (recentValues.length > 0 && pastValues.length > 0) {
             const recentMean = recentValues.reduce((a, b) => a + b, 0) / recentValues.length;
