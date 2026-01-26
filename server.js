@@ -20,7 +20,7 @@ const aiManager = new AIAPIManager(
 const newsScraper = new NewsScraper();
 
 console.log('AI API Manager initialized with Gemini (primary) and Mistral (fallback)');
-console.log('Automatic fallback enabled: Mistral will be used if Gemini hits rate limits');
+console.log('Automatic fallback enabled: Gemini will be used if Mistral hits rate limits');
 console.log('News Scraper initialized: Will scrape Google News, Times of India, and The Hindu');
 
 // Configuration for news APIs
@@ -149,7 +149,7 @@ app.post('/api/emotional-analysis', async (req, res) => {
         }
 
         // Use AI API Manager with automatic fallback
-        console.log(`Analyzing ${location} with AI (Gemini primary, Mistral fallback, Simple Analyzer last resort)...`);
+        console.log(`Analyzing ${location} with AI (Mistral primary, Gemini fallback, Simple Analyzer last resort)...`);
         const [geminiAnalysis, crimeTimeline] = await Promise.all([
             aiManager.analyzeTextSentiment(newsContent, location, { 
                 includeTimeline: true, 

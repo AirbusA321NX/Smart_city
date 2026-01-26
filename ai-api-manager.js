@@ -16,15 +16,15 @@ class AIAPIManager {
         
         // Track API status
         this.apiStatus = {
-            gemini: { available: true, lastError: null, errorCount: 0 },
-            mistral: { available: true, lastError: null, errorCount: 0 }
+            mistral: { available: true, lastError: null, errorCount: 0 },
+            gemini: { available: true, lastError: null, errorCount: 0 }
         };
         
         // Fallback settings
         this.maxRetries = 2;
         this.fallbackEnabled = true;
         
-        console.log('AI API Manager initialized with Gemini (primary), Mistral (fallback), and Simple Analyzer (last resort)');
+        console.log('AI API Manager initialized with Mistral (primary), Gemini (fallback), and Simple Analyzer (last resort)');
     }
 
     /**
@@ -34,32 +34,32 @@ class AIAPIManager {
         // Store articles for simple analyzer fallback
         this.lastArticles = options.articles || [];
         
-        // Try Gemini first
+        // Try Mistral first
         try {
-            console.log('Attempting analysis with Gemini AI...');
-            const result = await this.gemini.analyzeTextSentiment(text, location, options);
+            console.log('Attempting analysis with Mistral AI...');
+            const result = await this.analyzeWithMistral(text, location, options);
             
             // Reset error count on success
-            this.apiStatus.gemini.errorCount = 0;
-            this.apiStatus.gemini.available = true;
+            this.apiStatus.mistral.errorCount = 0;
+            this.apiStatus.mistral.available = true;
             
-            console.log('✓ Gemini AI analysis successful');
-            return { ...result, apiUsed: 'gemini' };
+            console.log('✓ Mistral AI analysis successful');
+            return result;
             
         } catch (error) {
-            console.warn('Gemini AI failed:', error.message);
-            this.apiStatus.gemini.lastError = error.message;
-            this.apiStatus.gemini.errorCount++;
+            console.warn('Mistral AI failed:', error.message);
+            this.apiStatus.mistral.lastError = error.message;
+            this.apiStatus.mistral.errorCount++;
             
             // Check if it's a rate limit error
             if (error.response?.status === 429 || error.message.includes('429')) {
-                console.log('⚠️  Gemini API rate limit hit - switching to Mistral...');
-                this.apiStatus.gemini.available = false;
+                console.log('⚠️  Mistral API rate limit hit - switching to Gemini...');
+                this.apiStatus.mistral.available = false;
             }
             
-            // Fallback to Mistral
+            // Fallback to Gemini
             if (this.fallbackEnabled) {
-                return await this.analyzeWithMistral(text, location, options);
+                return await this.analyzeWithGemini(text, location, options);
             } else {
                 throw error;
             }
@@ -73,35 +73,67 @@ class AIAPIManager {
         // Store articles for simple analyzer fallback
         this.lastArticles = newsArticles || [];
         
-        // Try Gemini first
+        // Try Mistral first
         try {
-            console.log('Fetching crime timeline with Gemini AI...');
-            const result = await this.gemini.getCrimeTimeline(location, newsArticles, months);
+            console.log('Fetching crime timeline with Mistral AI...');
+            const result = await this.getCrimeTimelineWithMistral(location, newsArticles, months);
+            
+            // Reset error count on success
+            this.apiStatus.mistral.errorCount = 0;
+            this.apiStatus.mistral.available = true;
+            
+            console.log('✓ Mistral AI timeline successful');
+            return result;
+            
+        } catch (error) {
+            console.warn('Mistral AI timeline failed:', error.message);
+            this.apiStatus.mistral.lastError = error.message;
+            this.apiStatus.mistral.errorCount++;
+            
+            // Check if it's a rate limit error
+            if (error.response?.status === 429 || error.message.includes('429')) {
+                console.log('⚠️  Mistral API rate limit hit - switching to Gemini...');
+                this.apiStatus.mistral.available = false;
+            }
+            
+            // Fallback to Gemini
+            if (this.fallbackEnabled) {
+                return await this.getCrimeTimelineWithGemini(location, newsArticles, months);
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    /**
+     * Analyze with Gemini API (fallback)
+     */
+    async analyzeWithGemini(text, location, options = {}) {
+        try {
+            console.log('Using Gemini AI as fallback...');
+            const result = await this.gemini.analyzeTextSentiment(text, location, options);
             
             // Reset error count on success
             this.apiStatus.gemini.errorCount = 0;
             this.apiStatus.gemini.available = true;
             
-            console.log('✓ Gemini AI timeline successful');
+            console.log('✓ Gemini AI analysis successful');
             return { ...result, apiUsed: 'gemini' };
             
         } catch (error) {
-            console.warn('Gemini AI timeline failed:', error.message);
+            console.error('Gemini AI also failed:', error.message);
             this.apiStatus.gemini.lastError = error.message;
             this.apiStatus.gemini.errorCount++;
             
-            // Check if it's a rate limit error
-            if (error.response?.status === 429 || error.message.includes('429')) {
-                console.log('⚠️  Gemini API rate limit hit - switching to Mistral...');
-                this.apiStatus.gemini.available = false;
+            // Use simple analyzer as last resort
+            if (this.lastArticles && this.lastArticles.length > 0) {
+                console.log('⚠️  Both AI APIs failed - using Simple Analyzer (keyword-based)');
+                const result = this.simpleAnalyzer.analyze(this.lastArticles, location);
+                return { ...result, apiUsed: 'simple-analyzer' };
             }
             
-            // Fallback to Mistral
-            if (this.fallbackEnabled) {
-                return await this.getCrimeTimelineWithMistral(location, newsArticles, months);
-            } else {
-                throw error;
-            }
+            // Return fallback data
+            return this.getFallbackAnalysis(location);
         }
     }
 
@@ -194,6 +226,45 @@ Provide a comprehensive analysis in JSON format:
             
             // Return fallback data
             return this.getFallbackAnalysis(location);
+        }
+    }
+
+    /**
+     * Get crime timeline with Gemini API (fallback)
+     */
+    async getCrimeTimelineWithGemini(location, newsArticles, months = 1) {
+        try {
+            console.log('Fetching crime timeline with Gemini AI...');
+            const result = await this.gemini.getCrimeTimeline(location, newsArticles, months);
+            
+            // Reset error count on success
+            this.apiStatus.gemini.errorCount = 0;
+            this.apiStatus.gemini.available = true;
+            
+            console.log('✓ Gemini AI timeline successful');
+            return { ...result, apiUsed: 'gemini' };
+            
+        } catch (error) {
+            console.error('Gemini AI timeline also failed:', error.message);
+            this.apiStatus.gemini.lastError = error.message;
+            this.apiStatus.gemini.errorCount++;
+            
+            // Use simple analyzer as last resort
+            if (this.lastArticles && this.lastArticles.length > 0) {
+                console.log('⚠️  Both AI APIs failed - using Simple Analyzer for timeline');
+                const result = this.simpleAnalyzer.analyze(this.lastArticles, location);
+                return {
+                    ...result.monthlyTrends[0],
+                    monthlyData: result.monthlyTrends,
+                    currentMonth: result.currentPeriod,
+                    overallTrend: result.overallTrend || { direction: 'stable' },
+                    recommendations: result.recommendations || [],
+                    apiUsed: 'simple-analyzer'
+                };
+            }
+            
+            // Return fallback timeline
+            return this.getFallbackTimeline(location, months);
         }
     }
 
