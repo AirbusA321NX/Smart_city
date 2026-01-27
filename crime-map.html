@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crime Safety Map - India</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #2d2d2d;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 30px;
+            background: #3a3a3a;
+            border-bottom: 2px solid #4a4a4a;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .control-group input,
+        .control-group select {
+            padding: 12px 20px;
+            border: 2px solid #4a4a4a;
+            background: #2d2d2d;
+            color: #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .control-group button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .control-group button:hover {
+            transform: translateY(-2px);
+        }
+
+        .control-group button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .map-container {
+            display: flex;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        #map {
+            flex: 1;
+            height: 600px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stats-card {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .stats-card h3 {
+            margin-bottom: 15px;
+            color: #e0e0e0;
+            font-size: 1.2em;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #4a4a4a;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #b0b0b0;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .stat-value.high {
+            color: #dc3545;
+        }
+
+        .stat-value.medium {
+            color: #ffc107;
+        }
+
+        .stat-value.low {
+            color: #28a745;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #b0b0b0;
+        }
+
+        .loading-spinner {
+            border: 4px solid #4a4a4a;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .region-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .region-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #2d2d2d;
+            border-radius: 8px;
+            border-left: 4px solid #4a4a4a;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .region-item:hover {
+            background: #3a3a3a;
+            transform: translateX(5px);
+        }
+
+        .region-item.high {
+            border-left-color: #dc3545;
+        }
+
+        .region-item.medium {
+            border-left-color: #ffc107;
+        }
+
+        .region-item.low {
+            border-left-color: #28a745;
+        }
+
+        .region-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #e0e0e0;
+        }
+
+        .region-safety {
+            font-size: 0.9em;
+            color: #b0b0b0;
+        }
+
+        @media (max-width: 1024px) {
+            .map-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            #map {
+                height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Crime Safety Map</h1>
+            <p>Interactive visualization of crime safety index across India</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="regionSelect">Select Region:</label>
+                <select id="regionSelect">
+                    <option value="">-- Choose a State --</option>
+                    <option value="Haryana">Haryana</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="Karnataka">Karnataka</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    <option value="West Bengal">West Bengal</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Gujarat">Gujarat</option>
+                    <option value="Punjab">Punjab</option>
+                </select>
+                <button id="analyzeBtn" onclick="analyzeCrimeMap()">Analyze Region</button>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="sidebar">
+                <div class="stats-card">
+                    <h3>📊 Summary Statistics</h3>
+                    <div id="summaryStats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Locations:</span>
+                            <span class="stat-value" id="totalLocations">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Average Safety:</span>
+                            <span class="stat-value" id="avgSafety">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">High Crime Areas:</span>
+                            <span class="stat-value high" id="highCrime">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Medium Crime Areas:</span>
+                            <span class="stat-value medium" id="mediumCrime">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Low Crime Areas:</span>
+                            <span class="stat-value low" id="lowCrime">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-card">
+                    <h3>📍 Analyzed Regions</h3>
+                    <div id="regionList" class="region-list">
+                        <p style="color: #6c757d; text-align: center;">Select a region to analyze</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="crime-map.js"></script>
+    
+    <script>
+        let crimeMap;
+        let currentData = null;
+
+        // Initialize map on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            crimeMap = new CrimeMap('map');
+            crimeMap.initMap([20.5937, 78.9629], 5); // Center on India
+            crimeMap.addLegend();
+        });
+
+        async function analyzeCrimeMap() {
+            const region = document.getElementById('regionSelect').value;
+            
+            if (!region) {
+                alert('Please select a region');
+                return;
+            }
+
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = 'Analyzing...';
+
+            // Show loading
+            document.getElementById('regionList').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Analyzing ${region}...</p>
+                    <p style="font-size: 0.9em; margin-top: 10px;">This may take a few minutes</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('http://localhost:3000/api/crime-map', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ region })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch crime map data');
+                }
+
+                const data = await response.json();
+                currentData = data;
+
+                // Clear existing markers
+                crimeMap.clearMap();
+
+                // Add markers for each sub-region
+                data.subRegions.forEach(subRegion => {
+                    const totalCrimes = Object.values(subRegion.crimeStats || {})
+                        .reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0);
+
+                    crimeMap.addLocationMarker(
+                        subRegion.location,
+                        subRegion.safetyIndex,
+                        {
+                            ...subRegion.crimeStats,
+                            total: totalCrimes
+                        }
+                    );
+                });
+
+                // Fit map to show all markers
+                crimeMap.fitBounds();
+
+                // Update statistics
+                updateStatistics();
+
+                // Update region list
+                updateRegionList(data.subRegions);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to analyze region: ' + error.message);
+                document.getElementById('regionList').innerHTML = `
+                    <p style="color: #dc3545; text-align: center;">Error loading data</p>
+                `;
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = 'Analyze Region';
+            }
+        }
+
+        function updateStatistics() {
+            const summary = crimeMap.getSummary();
+            
+            document.getElementById('totalLocations').textContent = summary.totalLocations;
+            document.getElementById('avgSafety').textContent = summary.averageSafety + '/100';
+            document.getElementById('highCrime').textContent = summary.highCrime;
+            document.getElementById('mediumCrime').textContent = summary.mediumCrime;
+            document.getElementById('lowCrime').textContent = summary.lowCrime;
+        }
+
+        function updateRegionList(regions) {
+            const regionList = document.getElementById('regionList');
+            
+            if (regions.length === 0) {
+                regionList.innerHTML = '<p style="color: #6c757d; text-align: center;">No data available</p>';
+                return;
+            }
+
+            // Sort by safety index (lowest first)
+            regions.sort((a, b) => a.safetyIndex - b.safetyIndex);
+
+            regionList.innerHTML = regions.map(region => {
+                let statusClass = 'low';
+                if (region.safetyIndex <= 40) statusClass = 'high';
+                else if (region.safetyIndex <= 70) statusClass = 'medium';
+
+                return `
+                    <div class="region-item ${statusClass}">
+                        <div class="region-name">${region.name}</div>
+                        <div class="region-safety">
+                            Safety Index: <strong>${region.safetyIndex}/100</strong>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
