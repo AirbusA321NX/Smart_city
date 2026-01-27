@@ -13,7 +13,8 @@ const NewsScraper = require('./news-scraper');
 // Initialize AI API Manager with automatic fallback
 const aiManager = new AIAPIManager(
     process.env.GEMINI_API_KEY,
-    process.env.MISTRAL_API_KEY
+    process.env.MISTRAL_API_KEY,
+    process.env.CEREBRAS_API_KEY
 );
 
 // Initialize News Scraper
@@ -854,6 +855,154 @@ app.post('/api/ai-reset', (req, res) => {
         message: 'API status reset - both APIs marked as available'
     });
 });
+
+// Crime mapping endpoint - Get regional safety data
+app.post('/api/crime-map', async (req, res) => {
+    try {
+        const { region, subRegions } = req.body;
+
+        if (!region) {
+            return res.status(400).json({
+                error: 'Region name is required'
+            });
+        }
+
+        console.log(`\n🗺️  Fetching crime map data for: ${region}`);
+
+        // Verify the main region
+        const regionVerification = await aiManager.verifyLocation(region);
+        
+        if (!regionVerification.valid) {
+            return res.status(400).json({
+                error: 'Invalid region',
+                details: regionVerification.note
+            });
+        }
+
+        // Get sub-regions (districts/cities) if not provided
+        let regionsToAnalyze = subRegions || [];
+        
+        if (regionsToAnalyze.length === 0) {
+            // Use AI to get major cities/districts in the region
+            console.log(`Getting sub-regions for ${region}...`);
+            regionsToAnalyze = await getSubRegions(region);
+        }
+
+        // Analyze each sub-region
+        const regionalData = [];
+        
+        for (const subRegion of regionsToAnalyze.slice(0, 10)) { // Limit to 10 regions
+            try {
+                console.log(`Analyzing ${subRegion}...`);
+                
+                // Scrape news for this region
+                const articles = await newsScraper.scrapeAllSources(subRegion, 10);
+                
+                if (articles.length === 0) {
+                    console.log(`⚠️  No articles found for ${subRegion}, skipping...`);
+                    continue;
+                }
+
+                // Analyze with AI
+                const articlesText = articles.map(a => 
+                    `${a.title}\n${a.description}`
+                ).join('\n\n');
+
+                const analysis = await aiManager.analyzeTextSentiment(
+                    articlesText,
+                    subRegion,
+                    { articles }
+                );
+
+                // Get coordinates for the location
+                const coords = await getCoordinates(subRegion);
+
+                regionalData.push({
+                    name: subRegion,
+                    safetyIndex: analysis.safetyIndex,
+                    crimeStats: analysis.crimeStats,
+                    location: coords,
+                    articlesCount: articles.length,
+                    apiUsed: analysis.apiUsed
+                });
+
+                console.log(`✓ ${subRegion}: Safety ${analysis.safetyIndex}/100`);
+
+            } catch (error) {
+                console.error(`Error analyzing ${subRegion}:`, error.message);
+            }
+        }
+
+        res.json({
+            region: region,
+            regionType: regionVerification.locationType,
+            subRegions: regionalData,
+            totalAnalyzed: regionalData.length,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('Error in crime mapping:', error);
+        res.status(500).json({
+            error: 'Failed to generate crime map',
+            details: error.message
+        });
+    }
+});
+
+// Helper function to get sub-regions
+async function getSubRegions(region) {
+    // Predefined major cities/districts for common states
+    const regionMap = {
+        'haryana': ['Gurugram', 'Faridabad', 'Panchkula', 'Ambala', 'Karnal', 'Panipat', 'Rohtak', 'Hisar'],
+        'delhi': ['Central Delhi', 'North Delhi', 'South Delhi', 'East Delhi', 'West Delhi', 'New Delhi'],
+        'maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad'],
+        'karnataka': ['Bangalore', 'Mysore', 'Mangalore', 'Hubli', 'Belgaum'],
+        'tamil nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem'],
+        'uttar pradesh': ['Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut'],
+        'west bengal': ['Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri'],
+        'rajasthan': ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Bikaner'],
+        'gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar'],
+        'punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda']
+    };
+
+    const normalizedRegion = region.toLowerCase().trim();
+    return regionMap[normalizedRegion] || [region];
+}
+
+// Helper function to get coordinates
+async function getCoordinates(location) {
+    try {
+        const response = await axios.get(
+            `https://api.geoapify.com/v1/geocode/search`,
+            {
+                params: {
+                    text: location,
+                    apiKey: process.env.GEOAPIFY_API_KEY,
+                    limit: 1
+                }
+            }
+        );
+
+        if (response.data.features && response.data.features.length > 0) {
+            const coords = response.data.features[0].geometry.coordinates;
+            return {
+                lat: coords[1],
+                lon: coords[0],
+                name: location
+            };
+        }
+    } catch (error) {
+        console.error(`Error getting coordinates for ${location}:`, error.message);
+    }
+
+    // Return default coordinates if geocoding fails
+    return {
+        lat: 28.7041,
+        lon: 77.1025,
+        name: location
+    };
+}
 
 // Start server
 app.listen(PORT, () => {
