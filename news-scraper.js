@@ -401,11 +401,8 @@ class NewsScraper {
         console.log('━'.repeat(50));
 
         const results = await Promise.allSettled([
-            this.scrapeGoogleNews(location, Math.ceil(maxResults * 0.4)), // 40% from Google News
-            this.scrapeTimesOfIndia(location, Math.ceil(maxResults * 0.2)), // 20% from TOI
-            this.scrapeTheHindu(location, Math.ceil(maxResults * 0.15)), // 15% from The Hindu
-            this.scrapeNDTV(location, Math.ceil(maxResults * 0.1)), // 10% from NDTV
-            this.scrapeIndiaToday(location, Math.ceil(maxResults * 0.15)) // 15% from India Today
+            this.scrapeGoogleNews(location, Math.ceil(maxResults * 0.6)), // 60% from Google News
+            this.scrapeTimesOfIndia(location, Math.ceil(maxResults * 0.4)) // 40% from TOI
         ]);
 
         let allArticles = [];
@@ -414,7 +411,7 @@ class NewsScraper {
             if (result.status === 'fulfilled' && result.value) {
                 allArticles = allArticles.concat(result.value);
             } else {
-                const sources = ['Google News', 'Times of India', 'The Hindu', 'NDTV', 'India Today'];
+                const sources = ['Google News', 'Times of India'];
                 console.warn(`⚠️  Failed to scrape ${sources[index]}`);
             }
         });
@@ -429,9 +426,6 @@ class NewsScraper {
         console.log(`✓ Total articles scraped: ${allArticles.length}`);
         console.log(`  - Google News: ${allArticles.filter(a => a.scrapedFrom === 'Google News').length}`);
         console.log(`  - Times of India: ${allArticles.filter(a => a.scrapedFrom === 'Times of India').length}`);
-        console.log(`  - The Hindu: ${allArticles.filter(a => a.scrapedFrom === 'The Hindu').length}`);
-        console.log(`  - NDTV: ${allArticles.filter(a => a.scrapedFrom === 'NDTV').length}`);
-        console.log(`  - India Today: ${allArticles.filter(a => a.scrapedFrom === 'India Today').length}`);
         console.log('━'.repeat(50) + '\n');
 
         // Return articles even if empty - no mock data

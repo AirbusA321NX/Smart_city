@@ -22,7 +22,7 @@ const newsScraper = new NewsScraper();
 
 console.log('AI API Manager initialized with Gemini (primary) and Mistral (fallback)');
 console.log('Automatic fallback enabled: Gemini will be used if Mistral hits rate limits');
-console.log('News Scraper initialized: Will scrape Google News, Times of India, and The Hindu');
+console.log('News Scraper initialized: Will scrape Google News and Times of India');
 
 // Configuration for news APIs
 const NEWS_API_KEYS = {
@@ -136,7 +136,7 @@ app.post('/api/emotional-analysis', async (req, res) => {
         // Scrape news from multiple sources
         console.log(`\n📰 Fetching news for ${location} via web scraping...`);
         const newsArticles = await newsScraper.scrapeAllSources(location, 25);
-        
+
         console.log(`✓ Retrieved ${newsArticles.length} articles via scraping`);
 
         // Prepare content for AI analysis
@@ -152,8 +152,8 @@ app.post('/api/emotional-analysis', async (req, res) => {
         // Use AI API Manager with automatic fallback
         console.log(`Analyzing ${location} with AI (Mistral primary, Gemini fallback, Simple Analyzer last resort)...`);
         const [geminiAnalysis, crimeTimeline] = await Promise.all([
-            aiManager.analyzeTextSentiment(newsContent, location, { 
-                includeTimeline: true, 
+            aiManager.analyzeTextSentiment(newsContent, location, {
+                includeTimeline: true,
                 articles: newsArticles,
                 locationType: locationType,
                 state: state,
@@ -189,14 +189,14 @@ app.post('/api/emotional-analysis', async (req, res) => {
                 publishedAt: article.publishedAt,
                 source: article.source
             })),
-            timeBasedCrimes: Array(24).fill(0),
+            timeBasedCrimes: [], // Empty array instead of zeros - will be populated if we have time-based data
             historicalData: {
                 dates: crimeTimeline.monthlyData?.map(m => m.month) || [],
                 safetyTrend: crimeTimeline.monthlyData?.map(m => m.safetyIndex) || []
             },
             geographicZones: [],
             apiUsed: geminiAnalysis.apiUsed || crimeTimeline.apiUsed || 'unknown',
-            newsSource: 'Web Scraping (Google News, TOI, The Hindu)',
+            newsSource: 'Web Scraping (Google News, TOI)',
             timestamp: new Date().toISOString()
         };
 
@@ -205,6 +205,9 @@ app.post('/api/emotional-analysis', async (req, res) => {
         console.log(`  Safety Index: ${emotionalData.safetyIndex}`);
         console.log(`  API Used: ${emotionalData.apiUsed}`);
         console.log(`  Emotions: Calm=${emotionalData.aggregatedEmotions.calm}% Angry=${emotionalData.aggregatedEmotions.angry}% Fear=${emotionalData.aggregatedEmotions.fear}%`);
+        console.log(`  Crime Stats:`, emotionalData.crimeStats);
+        console.log(`  Crime Stats Keys:`, Object.keys(emotionalData.crimeStats || {}));
+        console.log(`  Monthly Trends:`, emotionalData.monthlyTrends?.length || 0, 'months');
         res.json(emotionalData);
     } catch (error) {
         console.error('Error in emotional analysis:', error);
@@ -846,7 +849,7 @@ app.post('/api/crime-map', async (req, res) => {
 
         // Verify the main region
         const regionVerification = await aiManager.verifyLocation(region);
-        
+
         if (!regionVerification.valid) {
             return res.status(400).json({
                 error: 'Invalid region',
@@ -856,7 +859,7 @@ app.post('/api/crime-map', async (req, res) => {
 
         // Get sub-regions (districts/cities) if not provided
         let regionsToAnalyze = subRegions || [];
-        
+
         if (regionsToAnalyze.length === 0) {
             // Use AI to get major cities/districts in the region
             console.log(`Getting sub-regions for ${region}...`);
@@ -865,21 +868,21 @@ app.post('/api/crime-map', async (req, res) => {
 
         // Analyze each sub-region
         const regionalData = [];
-        
+
         for (const subRegion of regionsToAnalyze.slice(0, 10)) { // Limit to 10 regions
             try {
                 console.log(`Analyzing ${subRegion}...`);
-                
+
                 // Scrape news for this region
                 const articles = await newsScraper.scrapeAllSources(subRegion, 10);
-                
+
                 if (articles.length === 0) {
                     console.log(`⚠️  No articles found for ${subRegion}, skipping...`);
                     continue;
                 }
 
                 // Analyze with AI
-                const articlesText = articles.map(a => 
+                const articlesText = articles.map(a =>
                     `${a.title}\n${a.description}`
                 ).join('\n\n');
 

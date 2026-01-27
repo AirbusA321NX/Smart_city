@@ -10,28 +10,41 @@ let crimeTimelineChart = null;
  * @param {Object} timelineData - Timeline data from API
  */
 function updateCrimeTimeline(timelineData) {
-    if (!timelineData || !timelineData.monthlyData) {
-        console.warn('No timeline data available');
+    console.log('🔍 updateCrimeTimeline called with:', timelineData);
+    
+    const container = document.getElementById('current-period-info');
+    if (!container) {
+        console.error('❌ Crime timeline container not found!');
         return;
     }
 
-    const container = document.getElementById('current-period-info');
-    if (!container) {
-        console.warn('Crime timeline container not found');
+    console.log('✓ Timeline container found');
+
+    // Show container even if data is minimal
+    if (!timelineData) {
+        console.warn('⚠️ No timeline data provided');
+        container.innerHTML = '<div style="color: #fff; opacity: 0.7; padding: 20px; text-align: center;">No crime timeline data available</div>';
         return;
     }
 
     const currentMonth = timelineData.currentMonth || {};
     const overallTrend = timelineData.overallTrend || {};
+    const monthlyData = timelineData.monthlyData || [];
     
-    // Get crime breakdown from the first month's data
-    const crimeBreakdown = timelineData.monthlyData[0]?.crimeBreakdown || {};
+    console.log('Current month:', currentMonth);
+    console.log('Monthly data length:', monthlyData.length);
+    
+    // Get crime breakdown from the first month's data or from crimeStats
+    const crimeBreakdown = monthlyData[0]?.crimeBreakdown || {};
+    
+    console.log('Crime breakdown:', crimeBreakdown);
     
     // Create crime list HTML
     let crimeListHtml = '';
     const crimeEntries = Object.entries(crimeBreakdown);
     
     if (crimeEntries.length > 0) {
+        console.log('✓ Creating crime list with', crimeEntries.length, 'entries');
         crimeListHtml = `
             <div class="crime-list-section">
                 <h4 style="color: #fff; margin-bottom: 15px; font-size: 1.1rem;">Crime Types (This Month)</h4>
@@ -45,6 +58,8 @@ function updateCrimeTimeline(timelineData) {
                 </div>
             </div>
         `;
+    } else {
+        console.warn('⚠️ No crime entries in breakdown');
     }
 
     // Determine trend class

@@ -21,7 +21,7 @@ class EmotionalMapVisualizer {
             console.warn('Emotion pie chart canvas not found');
             return;
         }
-        
+
         const ctx = canvas.getContext('2d');
 
         // Destroy existing chart if it exists
@@ -103,7 +103,7 @@ class EmotionalMapVisualizer {
             console.warn('Crime bar chart canvas not found');
             return;
         }
-        
+
         const ctx = canvas.getContext('2d');
 
         // Destroy existing chart if it exists
@@ -197,6 +197,7 @@ class EmotionalMapVisualizer {
             const container = document.createElement('div');
             container.id = 'safety-trend-container';
             container.className = 'chart-container';
+            container.style.display = 'none'; // Hide initially until we have data
             container.innerHTML = '<h3>Safety Trend (Last 7 Days)</h3>';
             container.appendChild(ctx);
 
@@ -210,7 +211,7 @@ class EmotionalMapVisualizer {
                 labels: [], // Will be dynamically populated based on historical data
                 datasets: [{
                     label: 'Safety Index',
-                    data: [0, 0, 0, 0, 0, 0, 0], // Will be updated with real data
+                    data: [], // Start with empty data instead of zeros
                     fill: false,
                     borderColor: '#3498db',
                     backgroundColor: 'rgba(52, 152, 219, 0.1)',
@@ -365,10 +366,25 @@ class EmotionalMapVisualizer {
             const safetyTrend = emotionalData.historicalData.safetyTrend || [];
             const dates = emotionalData.historicalData.dates || [];
 
-            // Update both labels and data
-            this.charts.safetyTrend.data.labels = dates;
-            this.charts.safetyTrend.data.datasets[0].data = safetyTrend;
-            this.charts.safetyTrend.update('active');
+            // Only update if we have actual data
+            if (safetyTrend.length > 0 && dates.length > 0) {
+                // Update both labels and data
+                this.charts.safetyTrend.data.labels = dates;
+                this.charts.safetyTrend.data.datasets[0].data = safetyTrend;
+                this.charts.safetyTrend.update('active');
+
+                // Show the chart container
+                const container = document.getElementById('safety-trend-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            } else {
+                // Hide the chart if no data
+                const container = document.getElementById('safety-trend-container');
+                if (container) {
+                    container.style.display = 'none';
+                }
+            }
         }
 
         // Update time-based crime chart if we have time data
@@ -574,11 +590,12 @@ class EmotionalMapVisualizer {
             const container = document.createElement('div');
             container.id = 'time-crime-container';
             container.className = 'chart-container';
+            container.style.display = 'none'; // Hide initially until we have data
             container.innerHTML = '<h3>Crime Reports by Time of Day</h3>';
             container.appendChild(ctx);
 
             // Insert after the crime bar chart
-            const crimeChartContainer = document.querySelector('#crime-bar-chart').closest('.chart-container');
+            const crimeChartContainer = document.querySelector('#crime-bar-chart')?.closest('.chart-container');
             if (crimeChartContainer) {
                 crimeChartContainer.parentNode.insertBefore(container, crimeChartContainer.nextSibling);
             }
@@ -592,7 +609,7 @@ class EmotionalMapVisualizer {
                     '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'],
                 datasets: [{
                     label: 'Number of Reports',
-                    data: Array(24).fill(0), // Initialize with zeros
+                    data: [], // Start with empty data instead of zeros
                     backgroundColor: 'rgba(231, 76, 60, 0.7)',
                     borderColor: 'rgba(231, 76, 60, 1)',
                     borderWidth: 1
@@ -646,9 +663,26 @@ class EmotionalMapVisualizer {
     // Update time-based crime chart with new data
     updateTimeBasedCrimeChart(timeData) {
         if (this.charts.timeCrimeChart) {
-            // Update the chart data with time-based crime information
-            this.charts.timeCrimeChart.data.datasets[0].data = timeData || Array(24).fill(0);
-            this.charts.timeCrimeChart.update('active');
+            // Check if we have valid data
+            const hasData = timeData && Array.isArray(timeData) && timeData.some(val => val > 0);
+
+            if (hasData) {
+                // Update the chart data with time-based crime information
+                this.charts.timeCrimeChart.data.datasets[0].data = timeData;
+                this.charts.timeCrimeChart.update('active');
+
+                // Show the container
+                const container = document.getElementById('time-crime-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            } else {
+                // Hide the container if no meaningful data
+                const container = document.getElementById('time-crime-container');
+                if (container) {
+                    container.style.display = 'none';
+                }
+            }
         }
     }
 

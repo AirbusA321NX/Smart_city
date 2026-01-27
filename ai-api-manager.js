@@ -326,10 +326,13 @@ Provide a comprehensive analysis in JSON format:
 
             if (response.data?.choices?.[0]?.message?.content) {
                 const content = response.data.choices[0].message.content;
+                console.log('🤖 Cerebras sentiment analysis response:', content.substring(0, 300));
                 const jsonMatch = content.match(/\{[\s\S]*\}/);
 
                 if (jsonMatch) {
                     const result = JSON.parse(jsonMatch[0]);
+                    console.log('📊 Parsed crimeStats:', result.crimeStats);
+                    console.log('📊 Parsed aggregatedEmotions:', result.aggregatedEmotions);
                     return { ...result, apiUsed: 'cerebras' };
                 }
             }
