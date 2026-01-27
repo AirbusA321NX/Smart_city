@@ -21,10 +21,10 @@ class NewsScraper {
     async scrapeGoogleNews(location, maxResults = 15) {
         try {
             console.log(`Scraping Google News for: ${location}`);
-            
+
             const searchQuery = encodeURIComponent(`${location} crime news India`);
             const url = `https://news.google.com/search?q=${searchQuery}&hl=en-IN&gl=IN&ceid=IN:en`;
-            
+
             const response = await axios.get(url, {
                 headers: {
                     'User-Agent': this.userAgent,
@@ -54,31 +54,31 @@ class NewsScraper {
 
                     try {
                         const $article = $(element);
-                        
+
                         // Try multiple title selectors
                         let title = $article.find('a[class*="gPFEn"]').first().text().trim() ||
-                                   $article.find('h3').first().text().trim() ||
-                                   $article.find('h4').first().text().trim() ||
-                                   $article.find('a').first().text().trim();
-                        
+                            $article.find('h3').first().text().trim() ||
+                            $article.find('h4').first().text().trim() ||
+                            $article.find('a').first().text().trim();
+
                         // Try multiple link selectors
                         const linkElement = $article.find('a').first();
                         const link = linkElement.attr('href');
                         const fullLink = link ? (link.startsWith('http') ? link : `https://news.google.com${link}`) : '';
-                        
+
                         // Try multiple time selectors
                         const timeElement = $article.find('time');
                         const publishedAt = timeElement.attr('datetime') || new Date().toISOString();
-                        
+
                         // Try multiple source selectors
                         const sourceElement = $article.find('a[data-n-tid]').first() || $article.find('div[data-n-tid]').first();
                         const source = sourceElement.text().trim() || 'Google News';
-                        
+
                         // Try to get description/snippet
                         let description = $article.find('div[class*="snippet"]').text().trim() ||
-                                        $article.find('p').first().text().trim() ||
-                                        $article.find('span').first().text().trim();
-                        
+                            $article.find('p').first().text().trim() ||
+                            $article.find('span').first().text().trim();
+
                         // If no snippet, use title as description
                         if (!description || description.length < 10) {
                             description = title;
@@ -120,10 +120,10 @@ class NewsScraper {
     async scrapeTimesOfIndia(location, maxResults = 5) {
         try {
             console.log(`Scraping Times of India for: ${location}`);
-            
+
             const searchQuery = encodeURIComponent(`${location} crime`);
             const url = `https://timesofindia.indiatimes.com/topic/${searchQuery}`;
-            
+
             const response = await axios.get(url, {
                 headers: {
                     'User-Agent': this.userAgent
@@ -177,13 +177,16 @@ class NewsScraper {
     async scrapeTheHindu(location, maxResults = 5) {
         try {
             console.log(`Scraping The Hindu for: ${location}`);
-            
+
             const searchQuery = encodeURIComponent(`${location} crime`);
             const url = `https://www.thehindu.com/search/?q=${searchQuery}`;
-            
+
             const response = await axios.get(url, {
                 headers: {
-                    'User-Agent': this.userAgent
+                    'User-Agent': this.userAgent,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Referer': 'https://www.thehindu.com/'
                 },
                 timeout: this.timeout
             });
@@ -191,29 +194,43 @@ class NewsScraper {
             const $ = cheerio.load(response.data);
             const articles = [];
 
-            $('.story-card').each((index, element) => {
-                if (articles.length >= maxResults) return false;
+            // Try multiple selectors
+            const selectors = [
+                '.story-card',
+                'article',
+                '.element',
+                '.story-card-news',
+                'div[class*="story"]'
+            ];
 
-                try {
-                    const $article = $(element);
-                    const title = $article.find('h3').text().trim();
-                    const description = $article.find('p').text().trim();
-                    const link = $article.find('a').attr('href');
+            for (const selector of selectors) {
+                $(selector).each((index, element) => {
+                    if (articles.length >= maxResults) return false;
 
-                    if (title) {
-                        articles.push({
-                            title: title,
-                            description: description || title,
-                            url: link || '',
-                            source: 'The Hindu',
-                            publishedAt: new Date().toISOString(),
-                            scrapedFrom: 'The Hindu'
-                        });
+                    try {
+                        const $article = $(element);
+                        const title = $article.find('h3, h2, .title, a').first().text().trim();
+                        const description = $article.find('p, .intro, .lead-text').first().text().trim();
+                        const link = $article.find('a').first().attr('href');
+                        const fullLink = link ? (link.startsWith('http') ? link : `https://www.thehindu.com${link}`) : '';
+
+                        if (title && title.length > 10 && !articles.find(a => a.title === title)) {
+                            articles.push({
+                                title: title,
+                                description: description || title,
+                                url: fullLink,
+                                source: 'The Hindu',
+                                publishedAt: new Date().toISOString(),
+                                scrapedFrom: 'The Hindu'
+                            });
+                        }
+                    } catch (err) {
+                        // Skip this article
                     }
-                } catch (err) {
-                    console.warn('Error parsing Hindu article:', err.message);
-                }
-            });
+                });
+
+                if (articles.length > 0) break;
+            }
 
             console.log(`✓ Scraped ${articles.length} articles from The Hindu`);
             return articles;
@@ -233,13 +250,16 @@ class NewsScraper {
     async scrapeNDTV(location, maxResults = 5) {
         try {
             console.log(`Scraping NDTV for: ${location}`);
-            
+
             const searchQuery = encodeURIComponent(`${location} crime`);
             const url = `https://www.ndtv.com/search?searchtext=${searchQuery}`;
-            
+
             const response = await axios.get(url, {
                 headers: {
-                    'User-Agent': this.userAgent
+                    'User-Agent': this.userAgent,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Referer': 'https://www.ndtv.com/'
                 },
                 timeout: this.timeout
             });
@@ -247,31 +267,44 @@ class NewsScraper {
             const $ = cheerio.load(response.data);
             const articles = [];
 
-            $('.src_itm, .news_Itm, .src-itm').each((index, element) => {
-                if (articles.length >= maxResults) return false;
+            // Try multiple selectors
+            const selectors = [
+                '.src_itm',
+                '.news_Itm',
+                '.src-itm',
+                'article',
+                'div[class*="src"]',
+                'div[class*="news"]'
+            ];
 
-                try {
-                    const $article = $(element);
-                    const title = $article.find('h2, h3, .src_itm-ttl').text().trim() ||
-                                 $article.find('a').first().text().trim();
-                    const description = $article.find('p, .src_itm-txt').text().trim();
-                    const link = $article.find('a').attr('href');
-                    const fullLink = link ? (link.startsWith('http') ? link : `https://www.ndtv.com${link}`) : '';
+            for (const selector of selectors) {
+                $(selector).each((index, element) => {
+                    if (articles.length >= maxResults) return false;
 
-                    if (title && title.length > 10) {
-                        articles.push({
-                            title: title,
-                            description: description || title,
-                            url: fullLink,
-                            source: 'NDTV',
-                            publishedAt: new Date().toISOString(),
-                            scrapedFrom: 'NDTV'
-                        });
+                    try {
+                        const $article = $(element);
+                        const title = $article.find('h2, h3, .src_itm-ttl, a').first().text().trim();
+                        const description = $article.find('p, .src_itm-txt, span').first().text().trim();
+                        const link = $article.find('a').first().attr('href');
+                        const fullLink = link ? (link.startsWith('http') ? link : `https://www.ndtv.com${link}`) : '';
+
+                        if (title && title.length > 10 && !articles.find(a => a.title === title)) {
+                            articles.push({
+                                title: title,
+                                description: description || title,
+                                url: fullLink,
+                                source: 'NDTV',
+                                publishedAt: new Date().toISOString(),
+                                scrapedFrom: 'NDTV'
+                            });
+                        }
+                    } catch (err) {
+                        // Skip this article
                     }
-                } catch (err) {
-                    // Skip this article
-                }
-            });
+                });
+
+                if (articles.length > 0) break;
+            }
 
             console.log(`✓ Scraped ${articles.length} articles from NDTV`);
             return articles;
@@ -291,13 +324,16 @@ class NewsScraper {
     async scrapeIndiaToday(location, maxResults = 5) {
         try {
             console.log(`Scraping India Today for: ${location}`);
-            
+
             const searchQuery = encodeURIComponent(`${location} crime`);
             const url = `https://www.indiatoday.in/search?searchtext=${searchQuery}`;
-            
+
             const response = await axios.get(url, {
                 headers: {
-                    'User-Agent': this.userAgent
+                    'User-Agent': this.userAgent,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Referer': 'https://www.indiatoday.in/'
                 },
                 timeout: this.timeout
             });
@@ -305,32 +341,45 @@ class NewsScraper {
             const $ = cheerio.load(response.data);
             const articles = [];
 
-            $('.B1S3_content__wrap__9mSB6, .Story__Listing, .story-card').each((index, element) => {
-                if (articles.length >= maxResults) return false;
+            // Try multiple selectors
+            const selectors = [
+                '.B1S3_content__wrap__9mSB6',
+                '.Story__Listing',
+                '.story-card',
+                'article',
+                'div[class*="content"]',
+                'div[class*="story"]'
+            ];
 
-                try {
-                    const $article = $(element);
-                    const title = $article.find('h2, h3, .B1S3_content__title__qJIuv').text().trim() ||
-                                 $article.find('a').first().attr('title') ||
-                                 $article.find('a').first().text().trim();
-                    const description = $article.find('p, .B1S3_content__description__1vM0T').text().trim();
-                    const link = $article.find('a').attr('href');
-                    const fullLink = link ? (link.startsWith('http') ? link : `https://www.indiatoday.in${link}`) : '';
+            for (const selector of selectors) {
+                $(selector).each((index, element) => {
+                    if (articles.length >= maxResults) return false;
 
-                    if (title && title.length > 10) {
-                        articles.push({
-                            title: title,
-                            description: description || title,
-                            url: fullLink,
-                            source: 'India Today',
-                            publishedAt: new Date().toISOString(),
-                            scrapedFrom: 'India Today'
-                        });
+                    try {
+                        const $article = $(element);
+                        const title = $article.find('h2, h3, .B1S3_content__title__qJIuv, a').first().text().trim() ||
+                            $article.find('a').first().attr('title');
+                        const description = $article.find('p, .B1S3_content__description__1vM0T, span').first().text().trim();
+                        const link = $article.find('a').first().attr('href');
+                        const fullLink = link ? (link.startsWith('http') ? link : `https://www.indiatoday.in${link}`) : '';
+
+                        if (title && title.length > 10 && !articles.find(a => a.title === title)) {
+                            articles.push({
+                                title: title,
+                                description: description || title,
+                                url: fullLink,
+                                source: 'India Today',
+                                publishedAt: new Date().toISOString(),
+                                scrapedFrom: 'India Today'
+                            });
+                        }
+                    } catch (err) {
+                        // Skip this article
                     }
-                } catch (err) {
-                    // Skip this article
-                }
-            });
+                });
+
+                if (articles.length > 0) break;
+            }
 
             console.log(`✓ Scraped ${articles.length} articles from India Today`);
             return articles;
@@ -451,7 +500,7 @@ class NewsScraper {
     async test() {
         console.log('Testing News Scraper...\n');
         const articles = await this.scrapeAllSources('Delhi', 10);
-        
+
         console.log('\nSample Articles:');
         articles.slice(0, 3).forEach((article, index) => {
             console.log(`\n${index + 1}. ${article.title}`);
