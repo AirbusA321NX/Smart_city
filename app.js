@@ -510,6 +510,12 @@ async function fetchEmotionalData(location, lat, lng) {
 
         const emotionalData = await response.json();
 
+        console.log('📊 Received emotional data:', emotionalData);
+        console.log('  - Safety Index:', emotionalData.safetyIndex);
+        console.log('  - Emotions:', emotionalData.aggregatedEmotions);
+        console.log('  - Crime Stats:', emotionalData.crimeStats);
+        console.log('  - News count:', emotionalData.news?.length);
+
         updateUIWithData(emotionalData);
         showLoading(false);
     } catch (error) {
@@ -521,20 +527,46 @@ async function fetchEmotionalData(location, lat, lng) {
 
 // Update UI with fetched data
 async function updateUIWithData(data) {
+    console.log('🎨 Updating UI with data:', data);
+    
+    if (!data) {
+        console.error('No data provided to updateUIWithData');
+        return;
+    }
+
     // Update safety index
-    updateSafetyIndex(data.safetyIndex);
+    if (data.safetyIndex !== undefined) {
+        console.log('  ✓ Updating safety index:', data.safetyIndex);
+        updateSafetyIndex(data.safetyIndex);
+    } else {
+        console.warn('  ⚠ No safety index in data');
+    }
 
     // Update emotion pie chart
-    updateEmotionChart(data.emotions || data.aggregatedEmotions);
+    const emotions = data.emotions || data.aggregatedEmotions;
+    if (emotions) {
+        console.log('  ✓ Updating emotions:', emotions);
+        updateEmotionChart(emotions);
+    } else {
+        console.warn('  ⚠ No emotions data');
+    }
 
     // Update crime bar chart
-    updateCrimeChart(data.crimes || data.crimeStats);
+    const crimes = data.crimes || data.crimeStats;
+    if (crimes && Object.keys(crimes).length > 0) {
+        console.log('  ✓ Updating crime stats:', crimes);
+        updateCrimeChart(crimes);
+    } else {
+        console.warn('  ⚠ No crime stats or empty object');
+    }
 
     // Update crime timeline if available
     if (data.crimeTimeline && typeof updateCrimeTimeline === 'function') {
+        console.log('  ✓ Updating crime timeline');
         updateCrimeTimeline(data.crimeTimeline);
-    } else if (data.monthlyTrends && data.monthlyTrends.length > 0) {
-        // Fallback: create timeline from monthly trends
+    } else if (data.monthlyTrends && data.monthlyTrends.length > 0 && typeof updateCrimeTimeline === 'function') {
+        console.log('  ✓ Creating timeline from monthly trends');
+        // Create timeline from monthly trends
         const timelineData = {
             monthlyData: data.monthlyTrends,
             currentMonth: data.currentPeriod || {},
@@ -547,13 +579,21 @@ async function updateUIWithData(data) {
             recommendations: []
         };
         updateCrimeTimeline(timelineData);
+    } else {
+        console.warn('  ⚠ No crime timeline data');
     }
 
     // Update news feed
-    updateNewsFeed(data.news);
+    if (data.news && Array.isArray(data.news)) {
+        console.log('  ✓ Updating news feed with', data.news.length, 'articles');
+        updateNewsFeed(data.news);
+    } else {
+        console.warn('  ⚠ No news data');
+    }
 
     // Create state heatmap if location is provided
-    if (window.currentLocation) {
+    if (window.currentLocation && data) {
+        console.log('  ✓ Creating state heatmap');
         await createStateHeatmap(window.currentLocation, data);
     }
 
@@ -561,20 +601,20 @@ async function updateUIWithData(data) {
     const insights = getPredictiveInsights(data);
 
     // Show alerts for high-risk areas
-    if (insights.highRiskAreas.length > 0) {
+    if (insights && insights.highRiskAreas && insights.highRiskAreas.length > 0) {
         insights.highRiskAreas.forEach(area => {
             showNotification(`High risk ${area.type} alert: ${area.severity} severity with ${area.confidence}% confidence`, 'warning');
         });
     }
 
     // Show trending emotions
-    if (insights.trendingEmotions.length > 0) {
+    if (insights && insights.trendingEmotions && insights.trendingEmotions.length > 0) {
         insights.trendingEmotions.forEach(trend => {
             showNotification(`Emotion trend: ${trend.emotion} is ${trend.direction} by ${Math.abs(trend.change)}%`, 'info');
         });
     }
-
-
+    
+    console.log('✅ UI update complete');
 }
 
 // Update safety index display
@@ -582,7 +622,12 @@ function updateSafetyIndex(score) {
     const scoreElement = document.querySelector('.safety-score');
     const fillElement = document.querySelector('.safety-fill');
 
-    scoreElement.textContent = score;
+    if (!scoreElement || !fillElement) {
+        console.warn('Safety index elements not found');
+        return;
+    }
+
+    scoreElement.textContent = score || 0;
 
     // Update color based on score
     if (score >= 70) {
@@ -594,7 +639,7 @@ function updateSafetyIndex(score) {
     }
 
     // Animate the fill
-    fillElement.style.width = score + '%';
+    fillElement.style.width = (score || 0) + '%';
 }
 
 // Update emotion pie chart
@@ -602,6 +647,11 @@ function updateEmotionChart(emotions) {
     const canvas = document.getElementById('emotion-pie-chart');
     if (!canvas) {
         console.warn('Emotion pie chart canvas not found');
+        return;
+    }
+    
+    if (!emotions) {
+        console.warn('No emotion data provided');
         return;
     }
     
@@ -619,10 +669,10 @@ function updateEmotionChart(emotions) {
             labels: ['Calm', 'Angry', 'Depressed', 'Fear'],
             datasets: [{
                 data: [
-                    emotions.calm,
-                    emotions.angry,
-                    emotions.depressed,
-                    emotions.fear
+                    emotions.calm || 0,
+                    emotions.angry || 0,
+                    emotions.depressed || 0,
+                    emotions.fear || 0
                 ],
                 backgroundColor: [
                     '#2ecc71',
@@ -666,6 +716,12 @@ function updateCrimeChart(crimes) {
     if (crimeBarChart) {
         crimeBarChart.destroy();
         crimeBarChart = null;
+    }
+
+    // Check if crimes data is valid
+    if (!crimes || typeof crimes !== 'object' || Object.keys(crimes).length === 0) {
+        console.warn('No crime data available');
+        return;
     }
 
     // Extract crime types and counts from the crimes object
@@ -722,7 +778,17 @@ function updateCrimeChart(crimes) {
 // Update news feed
 function updateNewsFeed(news) {
     const container = document.getElementById('news-feed');
+    if (!container) {
+        console.warn('News feed container not found');
+        return;
+    }
+    
     container.innerHTML = '';
+
+    if (!news || !Array.isArray(news) || news.length === 0) {
+        container.innerHTML = '<div class="news-item"><div class="news-title">No news articles available for this location.</div></div>';
+        return;
+    }
 
     news.forEach(item => {
         const newsElement = document.createElement('div');
@@ -735,10 +801,10 @@ function updateNewsFeed(news) {
         else colorClass = 'fear';
 
         newsElement.innerHTML = `
-            <div class="news-title">${item.title}</div>
+            <div class="news-title">${item.title || 'Untitled'}</div>
             <div class="news-meta">
-                <span class="emotion-tag ${colorClass}">${item.emotion}</span>
-                <span class="sentiment-tag">${item.sentiment}</span>
+                <span class="emotion-tag ${colorClass}">${item.emotion || 'neutral'}</span>
+                <span class="sentiment-tag">${item.sentiment || 'neutral'}</span>
             </div>
         `;
 
