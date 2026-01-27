@@ -208,34 +208,9 @@ app.post('/api/emotional-analysis', async (req, res) => {
         res.json(emotionalData);
     } catch (error) {
         console.error('Error in emotional analysis:', error);
-
-        // Return fallback data instead of error
-        res.json({
-            location: req.body.location,
-            locationType: req.body.locationType || 'unknown',
-            state: req.body.state || null,
-            district: req.body.district || null,
-            safetyIndex: 50,
-            aggregatedEmotions: {
-                calm: 20,
-                angry: 20,
-                depressed: 20,
-                fear: 20,
-                happy: 20
-            },
-            crimeStats: {},
-            monthlyTrends: [],
-            currentPeriod: {},
-            crimeTimeline: {
-                monthlyData: [],
-                overallTrend: { direction: 'stable' }
-            },
-            news: [],
-            timeBasedCrimes: Array(24).fill(0),
-            historicalData: { dates: [], safetyTrend: [] },
-            geographicZones: [],
-            apiUsed: 'fallback',
-            warning: 'Using fallback data due to API errors',
+        res.status(500).json({
+            error: 'Failed to analyze location data',
+            message: error.message,
             timestamp: new Date().toISOString()
         });
     }

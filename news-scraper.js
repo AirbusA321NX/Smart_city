@@ -434,10 +434,9 @@ class NewsScraper {
         console.log(`  - India Today: ${allArticles.filter(a => a.scrapedFrom === 'India Today').length}`);
         console.log('━'.repeat(50) + '\n');
 
-        // If no articles found, return mock data
+        // Return articles even if empty - no mock data
         if (allArticles.length === 0) {
-            console.log('⚠️  No articles found, using mock data');
-            return this.getMockArticles(location);
+            console.log('⚠️  No articles found for this location');
         }
 
         return allArticles;
@@ -460,39 +459,7 @@ class NewsScraper {
         });
     }
 
-    /**
-     * Get mock articles when scraping fails
-     * @param {string} location - Location
-     * @returns {Array} - Mock articles
-     */
-    getMockArticles(location) {
-        return [
-            {
-                title: `${location} Safety Report - Community Update`,
-                description: `Recent safety and security updates from ${location} area. Local authorities report stable conditions.`,
-                url: '',
-                source: 'Local News',
-                publishedAt: new Date().toISOString(),
-                scrapedFrom: 'Mock Data'
-            },
-            {
-                title: `${location} Crime Statistics - Monthly Overview`,
-                description: `Monthly crime statistics and safety metrics for ${location} region.`,
-                url: '',
-                source: 'Local News',
-                publishedAt: new Date().toISOString(),
-                scrapedFrom: 'Mock Data'
-            },
-            {
-                title: `${location} Police Department - Safety Initiative`,
-                description: `New safety initiatives and community programs launched in ${location}.`,
-                url: '',
-                source: 'Local News',
-                publishedAt: new Date().toISOString(),
-                scrapedFrom: 'Mock Data'
-            }
-        ];
-    }
+
 
     /**
      * Test the scraper

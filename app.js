@@ -166,8 +166,6 @@ function handleSearchInput(event) {
             .catch(error => {
                 console.error('Error fetching Geoapify suggestions:', error);
                 dropdown.classList.add('hidden');
-                // Show fallback suggestions for common Indian cities
-                showFallbackSuggestions(query);
             });
     } else {
         dropdown.classList.add('hidden');
@@ -423,68 +421,12 @@ function geocodeLocation(location, verificationData) {
         })
         .catch(error => {
             console.error('Error geocoding location:', error);
-            // Try fallback coordinates for common Indian cities
-            const fallbackCoords = getFallbackCoordinates(location);
-            if (fallbackCoords) {
-                console.log('Using fallback coordinates for', location);
-                window.currentLocation = location;
-                map.setView([fallbackCoords.lat, fallbackCoords.lon], 12);
-                addMarker(fallbackCoords.lat, fallbackCoords.lon, location);
-                fetchDataForLocation(location, fallbackCoords.lat, fallbackCoords.lon);
-            } else {
-                alert('Location not found. Please try another location or update your GEOAPIFY_API_KEY.');
-                showLoading(false);
-            }
+            alert('Location not found. Please try another location or check your internet connection.');
+            showLoading(false);
         });
 }
 
-// Get fallback coordinates for common Indian cities
-function getFallbackCoordinates(location) {
-    const locationLower = location.toLowerCase().trim();
-    const fallbackCities = {
-        'delhi': { lat: 28.6139, lon: 77.2090 },
-        'mumbai': { lat: 19.0760, lon: 72.8777 },
-        'bangalore': { lat: 12.9716, lon: 77.5946 },
-        'bengaluru': { lat: 12.9716, lon: 77.5946 },
-        'kolkata': { lat: 22.5726, lon: 88.3639 },
-        'chennai': { lat: 13.0827, lon: 80.2707 },
-        'hyderabad': { lat: 17.3850, lon: 78.4867 },
-        'pune': { lat: 18.5204, lon: 73.8567 },
-        'ahmedabad': { lat: 23.0225, lon: 72.5714 },
-        'jaipur': { lat: 26.9124, lon: 75.7873 },
-        'chandigarh': { lat: 30.7333, lon: 76.7794 },
-        'lucknow': { lat: 26.8467, lon: 80.9462 },
-        'kanpur': { lat: 26.4499, lon: 80.3319 },
-        'nagpur': { lat: 21.1458, lon: 79.0882 },
-        'indore': { lat: 22.7196, lon: 75.8577 },
-        'thane': { lat: 19.2183, lon: 72.9781 },
-        'bhopal': { lat: 23.2599, lon: 77.4126 },
-        'visakhapatnam': { lat: 17.6868, lon: 83.2185 },
-        'pimpri-chinchwad': { lat: 18.6298, lon: 73.7997 },
-        'patna': { lat: 25.5941, lon: 85.1376 }
-    };
-    
-    return fallbackCities[locationLower] || null;
-}
 
-// Show fallback suggestions for common Indian cities
-function showFallbackSuggestions(query) {
-    const queryLower = query.toLowerCase();
-    const commonCities = [
-        'Delhi', 'Mumbai', 'Bangalore', 'Kolkata', 'Chennai',
-        'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Chandigarh',
-        'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane',
-        'Bhopal', 'Visakhapatnam', 'Patna'
-    ];
-    
-    const matches = commonCities.filter(city => 
-        city.toLowerCase().includes(queryLower)
-    );
-    
-    if (matches.length > 0) {
-        showSuggestions(matches);
-    }
-}
 
 // Geocode location using coordinates
 function geocodeLocationByCoordinates(lat, lon, locationName) {
@@ -572,19 +514,8 @@ async function fetchEmotionalData(location, lat, lng) {
         showLoading(false);
     } catch (error) {
         console.error('Error fetching emotional data:', error);
-
-        // Show error to user
         showLoading(false);
         showNotification('Error fetching data for ' + location + '. Please try again later.', 'error');
-
-        // Fallback to empty data
-        const emptyData = {
-            safetyIndex: 0,
-            emotions: { calm: 0, angry: 0, depressed: 0, fear: 0, happy: 0 },
-            crimeStats: {},
-            news: []
-        };
-        updateUIWithData(emptyData);
     }
 }
 
@@ -643,22 +574,7 @@ async function updateUIWithData(data) {
         });
     }
 
-    // Integrate social media data if visualizer is available
-    if (window.emotionalMapVisualizer && typeof window.emotionalMapVisualizer.aggregateSocialMediaData === 'function') {
-        try {
-            const socialMediaData = await window.emotionalMapVisualizer.aggregateSocialMediaData(window.currentLocation);
 
-            // Update the social media chart with the aggregated data
-            if (window.emotionalMapVisualizer.charts.socialMediaChart) {
-                window.emotionalMapVisualizer.updateSocialMediaChart(socialMediaData);
-            }
-
-            // Add the social media data to the emotionalData object for other components
-            emotionalData.socialMediaData = socialMediaData;
-        } catch (error) {
-            console.error('Error integrating social media data:', error);
-        }
-    }
 }
 
 // Update safety index display
@@ -850,17 +766,10 @@ function updateLoadingStatus(message) {
     console.log(`Loading: ${message}`);
 }
 
-// Initialize with empty data
+// Initialize - no sample data loaded
 function loadSampleData() {
-    // Initialize UI with empty data
-    const emptyData = {
-        safetyIndex: 0,
-        emotions: { calm: 0, angry: 0, depressed: 0, fear: 0, happy: 0 },
-        crimeStats: {},
-        news: []
-    };
-
-    updateUIWithData(emptyData);
+    // Don't load any sample data - wait for user to search
+    console.log('Application initialized. Search for a location to begin.');
 }
 
 // Function to perform periodic updates every 6 hours
