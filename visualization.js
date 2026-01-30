@@ -689,6 +689,11 @@ class EmotionalMapVisualizer {
 
 }
 
+// Make class available globally
+if (typeof window !== 'undefined') {
+    window.EmotionalMapVisualizer = EmotionalMapVisualizer;
+}
+
 // Initialize visualizer when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     const visualizer = new EmotionalMapVisualizer();

@@ -319,6 +319,11 @@ class MistralEmotionAnalyzer {
 
 }
 
+// Make class available globally
+if (typeof window !== 'undefined') {
+    window.MistralEmotionAnalyzer = MistralEmotionAnalyzer;
+}
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = MistralEmotionAnalyzer;

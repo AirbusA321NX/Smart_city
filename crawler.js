@@ -192,6 +192,11 @@ class IndianNewsCrawler {
     }
 }
 
+// Make class available globally
+if (typeof window !== 'undefined') {
+    window.IndianNewsCrawler = IndianNewsCrawler;
+}
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = IndianNewsCrawler;
