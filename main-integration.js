@@ -58,7 +58,7 @@ class CityEmotionalMapSystem {
                 checkComponent('EmotionalMapVisualizer', 10000),
                 checkComponent('DataIntegration', 10000)
             ]);
-            
+
             console.log('Components loaded:', {
                 mistral: !!components[0],
                 crawler: !!components[1],
@@ -91,16 +91,17 @@ class CityEmotionalMapSystem {
 
     // Set up event listeners
     setupEventListeners() {
-        // Listen for location search events
-        document.getElementById('search-btn').addEventListener('click', () => {
-            this.handleLocationSearch();
-        });
+        // NOTE: Search event listeners are handled by app.js to avoid duplication
+        // app.js already handles:
+        // - Location verification with Gemini
+        // - Geocoding with Geoapify
+        // - Map updates
+        // - Calling /api/emotional-analysis which returns the data we need
+        // 
+        // This integration system should focus on background tasks like periodic crawling
+        // rather than directly handling user search interactions
 
-        document.getElementById('location-search').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.handleLocationSearch();
-            }
-        });
+        console.log('Main integration system initialized (search handled by app.js)');
     }
 
     // Handle location search
