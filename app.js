@@ -136,7 +136,7 @@ function handleSearchInput(event) {
 
     if (query.length > 2) {
         const apiKey = window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY';
-        
+
         // Use Geoapify Autocomplete API for suggestions
         fetch(`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=in&apiKey=${apiKey}`)
             .then(response => {
@@ -261,10 +261,10 @@ async function verifyAndGeocode(location) {
         // Show verification result
         const typeLabel = verificationData.locationType.replace('-', ' ').toUpperCase();
         console.log(`✓ Verified: ${verificationData.locationName} is a ${typeLabel}`);
-        
+
         // Show verification badge
         showVerificationBadge(verificationData);
-        
+
         // Store verification data for later use
         window.currentLocationData = verificationData;
 
@@ -288,22 +288,22 @@ function showVerificationBadge(verificationData) {
         const badge = document.getElementById('location-verification-badge');
         const icon = document.getElementById('verification-icon');
         const text = document.getElementById('verification-text');
-        
+
         console.log('=== VERIFICATION BADGE ===');
         console.log('showVerificationBadge called');
         console.log('Badge element found:', !!badge);
         console.log('Icon element found:', !!icon);
         console.log('Text element found:', !!text);
-        
+
         if (!badge || !icon || !text) {
             console.error('One or more badge elements not found in DOM');
             return;
         }
-        
+
         // Get location type label
         const typeLabel = verificationData.locationType.replace('-', ' ');
         const typeDisplay = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
-        
+
         // Build hierarchy display
         const hierarchyParts = [];
         if (verificationData.state) {
@@ -314,11 +314,11 @@ function showVerificationBadge(verificationData) {
         }
         hierarchyParts.push(verificationData.locationName);
         const hierarchyDisplay = hierarchyParts.join(' → ');
-        
+
         // Update badge content
         icon.textContent = '✓';
         text.textContent = `${hierarchyDisplay} (${typeDisplay})`;
-        
+
         // Set badge color based on confidence
         let bgColor = '#2ecc71';
         let textColor = '#fff';
@@ -332,11 +332,11 @@ function showVerificationBadge(verificationData) {
             bgColor = '#e74c3c';
             textColor = '#fff';
         }
-        
+
         // Remove hidden class first
         badge.classList.remove('hidden');
         console.log('Classes after remove hidden:', badge.className);
-        
+
         // Set ALL necessary inline styles with !important to override CSS
         badge.setAttribute('style', `
             background-color: ${bgColor} !important;
@@ -356,7 +356,7 @@ function showVerificationBadge(verificationData) {
             visibility: visible !important;
             opacity: 1 !important;
         `);
-        
+
         // Log for debugging
         console.log(`✓ Badge displayed: ${typeDisplay} - ${verificationData.locationName}`);
         console.log(`  Confidence: ${verificationData.confidence}%`);
@@ -385,7 +385,7 @@ function hideVerificationBadge() {
 // Geocode location and update map
 function geocodeLocation(location, verificationData) {
     const apiKey = window.API_CONFIG?.GEOAPIFY_API_KEY || 'YOUR_GEOAPIFY_API_KEY';
-    
+
     // Use Geoapify Forward Geocoding API
     fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(location)}&format=json&apiKey=${apiKey}`)
         .then(response => {
@@ -432,7 +432,7 @@ function geocodeLocation(location, verificationData) {
 function geocodeLocationByCoordinates(lat, lon, locationName) {
     // Clear previous verification badge since this is direct coordinate access
     hideVerificationBadge();
-    
+
     // Store current location for heatmap
     window.currentLocation = locationName;
 
@@ -486,7 +486,7 @@ async function fetchEmotionalData(location, lat, lng) {
         const locationType = window.currentLocationData?.locationType || 'city';
         const state = window.currentLocationData?.state || null;
         const district = window.currentLocationData?.district || null;
-        
+
         // Call the backend API to get emotional analysis
         const response = await fetch('/api/emotional-analysis', {
             method: 'POST',
@@ -528,7 +528,7 @@ async function fetchEmotionalData(location, lat, lng) {
 // Update UI with fetched data
 async function updateUIWithData(data) {
     console.log('🎨 Updating UI with data:', data);
-    
+
     if (!data) {
         console.error('No data provided to updateUIWithData');
         return;
@@ -553,14 +553,21 @@ async function updateUIWithData(data) {
 
     // Update crime bar chart
     const crimes = data.crimes || data.crimeStats;
-    if (crimes && Object.keys(crimes).length > 0) {
-        console.log('  ✓ Updating crime stats:', crimes);
-        updateCrimeChart(crimes);
-    } else {
-        console.warn('  ⚠ No crime stats or empty object');
+    console.log('  📊 Crime data received:', crimes);
+
+    // If crimeStats is empty, try to get data from crimeTimeline
+    let crimeDataToDisplay = crimes;
+    if ((!crimes || Object.keys(crimes).length === 0) && data.crimeTimeline && data.crimeTimeline.monthlyData && data.crimeTimeline.monthlyData.length > 0) {
+        console.log('  ℹ️ CrimeStats empty, using data from timeline');
+        crimeDataToDisplay = data.crimeTimeline.monthlyData[0]?.crimeBreakdown || {};
     }
 
-    // Update crime timeline if available
+    // Always call updateCrimeChart - it will handle displaying data or "no data" message
+    console.log('  ✓ Calling updateCrimeChart with:', crimeDataToDisplay);
+    updateCrimeChart(crimeDataToDisplay);
+
+    // Update crime timeline - always call it
+    console.log('  📅 Crime timeline data:', data.crimeTimeline);
     if (data.crimeTimeline && typeof updateCrimeTimeline === 'function') {
         console.log('  ✓ Updating crime timeline');
         updateCrimeTimeline(data.crimeTimeline);
@@ -579,8 +586,9 @@ async function updateUIWithData(data) {
             recommendations: []
         };
         updateCrimeTimeline(timelineData);
-    } else {
-        console.warn('  ⚠ No crime timeline data');
+    } else if (typeof updateCrimeTimeline === 'function') {
+        console.warn('  ⚠ No crime timeline data, calling with null');
+        updateCrimeTimeline(null);
     }
 
     // Update news feed
@@ -613,7 +621,7 @@ async function updateUIWithData(data) {
             showNotification(`Emotion trend: ${trend.emotion} is ${trend.direction} by ${Math.abs(trend.change)}%`, 'info');
         });
     }
-    
+
     console.log('✅ UI update complete');
 }
 
@@ -642,137 +650,49 @@ function updateSafetyIndex(score) {
     fillElement.style.width = (score || 0) + '%';
 }
 
-// Update emotion pie chart
+// Update emotion pie chart - delegate to EmotionalMapVisualizer
 function updateEmotionChart(emotions) {
-    const canvas = document.getElementById('emotion-pie-chart');
-    if (!canvas) {
-        console.warn('Emotion pie chart canvas not found');
-        return;
-    }
-    
     if (!emotions) {
         console.warn('No emotion data provided');
         return;
     }
-    
-    const ctx = canvas.getContext('2d');
 
-    // Destroy existing chart if it exists
-    if (emotionPieChart) {
-        emotionPieChart.destroy();
-        emotionPieChart = null;
+    // Use the visualizer if available, otherwise fallback to direct chart update
+    if (window.emotionalMapVisualizer && window.emotionalMapVisualizer.charts && window.emotionalMapVisualizer.charts.emotionPie) {
+        // Update the existing chart via the visualizer
+        window.emotionalMapVisualizer.charts.emotionPie.data.datasets[0].data = [
+            emotions.calm || 0,
+            emotions.angry || 0,
+            emotions.depressed || 0,
+            emotions.fear || 0,
+            emotions.happy || 0
+        ];
+        window.emotionalMapVisualizer.charts.emotionPie.update('active');
+    } else {
+        console.warn('EmotionalMapVisualizer not initialized yet');
     }
-
-    emotionPieChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: ['Calm', 'Angry', 'Depressed', 'Fear'],
-            datasets: [{
-                data: [
-                    emotions.calm || 0,
-                    emotions.angry || 0,
-                    emotions.depressed || 0,
-                    emotions.fear || 0
-                ],
-                backgroundColor: [
-                    '#2ecc71',
-                    '#e74c3c',
-                    '#34495e',
-                    '#9b59b6'
-                ],
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: '#fff',
-                        font: {
-                            size: 12
-                        }
-                    }
-                }
-            }
-        }
-    });
 }
 
-// Update crime bar chart
+// Update crime bar chart - delegate to EmotionalMapVisualizer
 function updateCrimeChart(crimes) {
-    const canvas = document.getElementById('crime-bar-chart');
-    if (!canvas) {
-        console.warn('Crime bar chart canvas not found');
-        return;
-    }
-    
-    const ctx = canvas.getContext('2d');
-
-    // Destroy existing chart if it exists
-    if (crimeBarChart) {
-        crimeBarChart.destroy();
-        crimeBarChart = null;
-    }
-
     // Check if crimes data is valid
     if (!crimes || typeof crimes !== 'object' || Object.keys(crimes).length === 0) {
         console.warn('No crime data available');
         return;
     }
 
-    // Extract crime types and counts from the crimes object
-    const crimeTypes = Object.keys(crimes);
-    const crimeCounts = crimeTypes.map(type => crimes[type]);
+    // Use the visualizer if available
+    if (window.emotionalMapVisualizer && window.emotionalMapVisualizer.charts && window.emotionalMapVisualizer.charts.crimeBar) {
+        const crimeTypes = Object.keys(crimes);
+        const crimeCounts = crimeTypes.map(type => crimes[type]);
 
-    // Generate colors based on the number of crime types
-    const backgroundColors = generateColors(crimeTypes.length, 'rgba', 0.7);
-    const borderColors = generateColors(crimeTypes.length, 'rgba', 1);
-
-    crimeBarChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: crimeTypes, // Dynamic labels from crime data
-            datasets: [{
-                label: 'Incident Count',
-                data: crimeCounts, // Dynamic data from crime counts
-                backgroundColor: backgroundColors,
-                borderColor: borderColors,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        color: '#fff'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: '#fff'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                }
-            }
-        }
-    });
+        // Update the existing chart via the visualizer
+        window.emotionalMapVisualizer.charts.crimeBar.data.labels = crimeTypes;
+        window.emotionalMapVisualizer.charts.crimeBar.data.datasets[0].data = crimeCounts;
+        window.emotionalMapVisualizer.charts.crimeBar.update('active');
+    } else {
+        console.warn('EmotionalMapVisualizer not initialized yet');
+    }
 }
 
 // Update news feed
@@ -782,7 +702,7 @@ function updateNewsFeed(news) {
         console.warn('News feed container not found');
         return;
     }
-    
+
     container.innerHTML = '';
 
     if (!news || !Array.isArray(news) || news.length === 0) {
